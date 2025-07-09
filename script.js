@@ -12,6 +12,18 @@ const previewBox = document.getElementById('resume-preview');
 const downloadBtn = document.getElementById('download-btn');
 const apiKeyInput = document.getElementById('api-key');
 
+// Cover Letter DOM Elements
+const generateCoverLetterCheckbox = document.getElementById('generate-cover-letter');
+const coverLetterOptions = document.getElementById('cover-letter-options');
+const hiringManagerInput = document.getElementById('hiring-manager');
+const contactInfoInput = document.getElementById('contact-info');
+const coverLetterPreviewSection = document.getElementById('cover-letter-preview-section');
+const coverLetterPreview = document.getElementById('cover-letter-preview');
+
+// Copy Button DOM Elements
+const copyResumeBtn = document.getElementById('copy-resume-btn');
+const copyCoverLetterBtn = document.getElementById('copy-cover-letter-btn');
+
 // ====== MODAL LOGIC FOR API KEY HELP ======
 const howToApiBtn = document.getElementById('how-to-api-btn');
 const apiModal = document.getElementById('api-modal');
@@ -28,6 +40,81 @@ window.addEventListener('keydown', (e) => {
 });
 apiModal.addEventListener('click', (e) => {
     if (e.target === apiModal) apiModal.style.display = 'none';
+});
+
+// ====== COVER LETTER TOGGLE LOGIC ======
+generateCoverLetterCheckbox.addEventListener('change', () => {
+    if (generateCoverLetterCheckbox.checked) {
+        coverLetterOptions.style.display = 'block';
+        coverLetterPreviewSection.style.display = 'block';
+    } else {
+        coverLetterOptions.style.display = 'none';
+        coverLetterPreviewSection.style.display = 'none';
+        coverLetterPreview.innerHTML = '';
+    }
+});
+
+// ====== COPY FUNCTIONALITY ======
+async function copyToClipboard(text, button) {
+    try {
+        await navigator.clipboard.writeText(text);
+
+        // Visual feedback
+        const originalText = button.innerHTML;
+        button.classList.add('copied');
+        button.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20,6 9,17 4,12"></polyline>
+            </svg>
+            Copied!
+        `;
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+            button.classList.remove('copied');
+            button.innerHTML = originalText;
+        }, 2000);
+
+    } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        // Visual feedback for fallback
+        const originalText = button.innerHTML;
+        button.classList.add('copied');
+        button.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20,6 9,17 4,12"></polyline>
+            </svg>
+            Copied!
+        `;
+
+        setTimeout(() => {
+            button.classList.remove('copied');
+            button.innerHTML = originalText;
+        }, 2000);
+    }
+}
+
+// Copy Resume Button
+copyResumeBtn.addEventListener('click', () => {
+    const resumeText = previewBox.textContent || previewBox.innerText;
+    if (resumeText && resumeText.trim() && !resumeText.includes('Please upload') && !resumeText.includes('Please paste') && !resumeText.includes('Please enter')) {
+        copyToClipboard(resumeText, copyResumeBtn);
+    }
+});
+
+// Copy Cover Letter Button
+copyCoverLetterBtn.addEventListener('click', () => {
+    const coverLetterText = coverLetterPreview.textContent || coverLetterPreview.innerText;
+    if (coverLetterText && coverLetterText.trim() && !coverLetterText.includes('Cover letter generation failed')) {
+        copyToClipboard(coverLetterText, copyCoverLetterBtn);
+    }
 });
 
 // ====== HELPERS ======
@@ -121,7 +208,12 @@ async function extractResumeText(file) {
 // ====== HUGGING FACE API INTEGRATION ======
 async function callDeepSeekChat(resumeText, jdText, apiToken) {
     const endpoint = "https://router.huggingface.co/hyperbolic/v1/chat/completions";
-    const prompt = `\nYou are a professional career coach and resume writer.\nYour task: Given a resume and a job description, output ONLY the revised, tailored resume in a clean, professional, and well-organized format suitable for direct use.\n- Do NOT include any \"thinking\", steps, or commentary.\n- Use clear section headers (e.g., Professional Summary, Skills, Experience, Projects, Education, Certifications).\n- Use bullet points and concise, formal language.\n- Remove personal details (DOB, marital status, etc.).\n- Focus on the job requirements and highlight relevant skills and experience.\n- Output ONLY the final resume, nothing else.\n\nHere is the resume: ${resumeText}\n\nHere is the job description: ${jdText}\n`;
+    const prompt = `Tailor this resume for the job.
+
+RESUME: ${resumeText}
+JOB: ${jdText}
+
+OUTPUT RESUME ONLY. NO THINKING.`;
 
     const response = await fetch(endpoint, {
         method: "POST",
@@ -137,7 +229,59 @@ async function callDeepSeekChat(resumeText, jdText, apiToken) {
                     content: prompt
                 }
             ],
-            temperature: 0.5,
+            temperature: 0.2,
+            top_p: 0.7,
+            stream: false
+        })
+    });
+
+    if (!response.ok) {
+        let errorMsg = "Hyperbolic API error: " + response.status;
+        try {
+            const errorData = await response.json();
+            if (errorData && errorData.error) {
+                errorMsg += " - " + errorData.error;
+            }
+        } catch (e) { }
+        throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
+        return data.choices[0].message.content;
+    } else {
+        throw new Error("Unexpected response format from Hyperbolic API.");
+    }
+}
+
+async function generateCoverLetter(resumeText, jdText, managerName, contactInfo, apiToken) {
+    const endpoint = "https://router.huggingface.co/hyperbolic/v1/chat/completions";
+    const prompt = `Write a professional cover letter.
+
+FORMAT: Business letter format
+ADDRESS TO: ${managerName}
+SIGNATURE: ${contactInfo}
+
+RESUME: ${resumeText}
+JOB: ${jdText}
+
+OUTPUT THE LETTER ONLY. NO THINKING. NO EXPLANATIONS.`;
+
+    const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${apiToken}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            model: "deepseek-ai/DeepSeek-R1-0528",
+            messages: [
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            temperature: 0.2,
             top_p: 0.7,
             stream: false
         })
@@ -165,10 +309,14 @@ async function callDeepSeekChat(resumeText, jdText, apiToken) {
 // ====== MAIN LOGIC ======
 tailorBtn.addEventListener('click', async () => {
     previewBox.innerHTML = '';
+    coverLetterPreview.innerHTML = '';
     // downloadBtn.style.display = 'none'; // Download button removed
     const file = resumeInput.files[0];
     const jdText = jdInput.value.trim();
     const apiToken = getApiToken();
+    const shouldGenerateCoverLetter = generateCoverLetterCheckbox.checked;
+    const managerName = hiringManagerInput.value.trim() || 'Hiring Manager';
+    const contactInfo = contactInfoInput.value.trim();
 
     if (!file) {
         showMessage('Please upload your resume file.', true);
@@ -180,6 +328,10 @@ tailorBtn.addEventListener('click', async () => {
     }
     if (!apiToken) {
         showMessage('Please enter your Hugging Face API token.', true);
+        return;
+    }
+    if (shouldGenerateCoverLetter && !contactInfo) {
+        showMessage('Please enter your contact information for the cover letter signature.', true);
         return;
     }
 
@@ -197,23 +349,45 @@ tailorBtn.addEventListener('click', async () => {
         const tailoredResume = await callDeepSeekChat(resumeText, jdText, apiToken);
         previewBox.innerHTML = '';
         typewriterEffect(tailoredResume, previewBox, 14);
+
+        // Generate cover letter if requested
+        if (shouldGenerateCoverLetter) {
+            showSpinner();
+            try {
+                const coverLetter = await generateCoverLetter(resumeText, jdText, managerName, contactInfo, apiToken);
+                coverLetterPreview.innerHTML = '';
+                typewriterEffect(coverLetter, coverLetterPreview, 14);
+            } catch (err) {
+                coverLetterPreview.innerHTML = `<span style="color:#ff6b6b;">Cover letter generation failed: ${err.toString()}</span>`;
+            }
+        }
         // downloadBtn.style.display = 'inline-block'; // Download button removed
     } catch (err) {
         showMessage(err.toString(), true);
     }
 });
 
-// ====== PDF DOWNLOAD REMOVED ======
 // ====== UX: Clear preview on new upload or JD change ======
 resumeInput.addEventListener('change', () => {
     previewBox.innerHTML = '';
+    coverLetterPreview.innerHTML = '';
     // downloadBtn.style.display = 'none'; // Download button removed
 });
 jdInput.addEventListener('input', () => {
     previewBox.innerHTML = '';
+    coverLetterPreview.innerHTML = '';
     // downloadBtn.style.display = 'none'; // Download button removed
 });
 apiKeyInput.addEventListener('input', () => {
     previewBox.innerHTML = '';
+    coverLetterPreview.innerHTML = '';
     // downloadBtn.style.display = 'none'; // Download button removed
-}); 
+});
+
+// Clear previews when cover letter inputs change
+hiringManagerInput.addEventListener('input', () => {
+    coverLetterPreview.innerHTML = '';
+});
+contactInfoInput.addEventListener('input', () => {
+    coverLetterPreview.innerHTML = '';
+});
