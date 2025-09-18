@@ -207,14 +207,44 @@ let originalResumeStyle = {
     backgroundColor: '#ffffff'
 };
 
-// Font mapping for PDFKit (using built-in fonts)
+// Enhanced font mapping for foliojs-fork PDFKit with additional styling options
 const fontMapping = {
     'times': 'Times-Roman',
     'times new roman': 'Times-Roman',
     'arial': 'Helvetica',
     'helvetica': 'Helvetica',
     'courier': 'Courier',
+    'georgia': 'Times-Roman',
+    'calibri': 'Helvetica',
     'default': 'Helvetica'
+};
+
+// Enhanced styling options for foliojs-fork
+const enhancedStyles = {
+    header: {
+        fontSize: 16,
+        font: 'Helvetica-Bold',
+        color: '#2c3e50',
+        lineSpacing: 1.2
+    },
+    subheader: {
+        fontSize: 13,
+        font: 'Helvetica-Bold',
+        color: '#34495e',
+        lineSpacing: 1.1
+    },
+    body: {
+        fontSize: 11,
+        font: 'Helvetica',
+        color: '#2c3e50',
+        lineSpacing: 1.4
+    },
+    bullet: {
+        fontSize: 10,
+        font: 'Helvetica',
+        color: '#555',
+        lineSpacing: 1.3
+    }
 };
 
 function mapFontToPDFKit(fontFamily) {
@@ -546,18 +576,19 @@ async function generateStyledPDF(content, filename, isResume = true) {
             }
         });
 
-        // Set up document styling based on extracted resume style
+        // Enhanced document styling with foliojs-fork capabilities
         const fontSize = originalResumeStyle.fontSize || 11;
         const fontFamily = mapFontToPDFKit(originalResumeStyle.fontFamily) || 'Helvetica';
         const lineHeight = originalResumeStyle.lineHeight || 1.4;
-        const textColor = originalResumeStyle.textColor || '#000000';
+        const textColor = originalResumeStyle.textColor || '#2c3e50';
 
-        // Process content for PDF
+        // Process content for enhanced PDF with better styling
         const lines = content.split('\n');
         let yPosition = doc.page.margins.top;
         const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
         const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
 
+        // Set default styling
         doc.font(fontFamily)
            .fontSize(fontSize)
            .fillColor(textColor);
@@ -565,9 +596,9 @@ async function generateStyledPDF(content, filename, isResume = true) {
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             
-            // Skip empty lines but add some spacing
+            // Skip empty lines but add appropriate spacing
             if (!line) {
-                yPosition += fontSize * 0.5;
+                yPosition += fontSize * 0.3;
                 continue;
             }
 
@@ -577,34 +608,122 @@ async function generateStyledPDF(content, filename, isResume = true) {
                 yPosition = doc.page.margins.top;
             }
 
-            // Detect headers (lines that are likely section headers)
-            const isHeader = line.length < 50 && 
-                            (line.toUpperCase() === line || 
-                             line.includes(':') || 
-                             /^[A-Z][A-Za-z\s]+$/.test(line));
+            // Enhanced content detection and styling
+            const isMainHeader = line.length < 60 && 
+                               (line.toUpperCase() === line || 
+                                /^[A-Z][A-Z\s]+$/.test(line)) &&
+                               !line.includes('@') && !line.includes('|');
+            
+            const isSubHeader = !isMainHeader && line.length < 50 && 
+                              (line.includes(':') || 
+                               /^[A-Z][A-Za-z\s&-]+$/.test(line)) &&
+                              !line.includes('@');
+            
+            const isBulletPoint = line.startsWith('•') || line.startsWith('-') || line.startsWith('*');
+            const isContactInfo = line.includes('@') || line.includes('|') || 
+                                /\d{3}[-.]?\d{3}[-.]?\d{4}/.test(line);
 
-            if (isHeader && line.length > 2) {
-                // Style headers differently
-                doc.fontSize(fontSize + 2)
-                   .font('Helvetica-Bold')
-                   .fillColor('#2c3e50');
+            if (isMainHeader && line.length > 2) {
+                // Main headers with enhanced styling
+                yPosition += enhancedStyles.header.fontSize * 0.5;
                 
-                yPosition += fontSize * 0.5; // Add space before header
+                doc.fontSize(enhancedStyles.header.fontSize)
+                   .font(enhancedStyles.header.font)
+                   .fillColor(enhancedStyles.header.color);
+                
+                // Add subtle underline for main headers
                 doc.text(line, doc.page.margins.left, yPosition, {
                     width: pageWidth,
                     align: 'left'
                 });
-                yPosition += (fontSize + 2) * lineHeight + 5;
                 
-                // Reset to normal text style
-                doc.fontSize(fontSize)
-                   .font(fontFamily)
-                   .fillColor(textColor);
+                // Add decorative line under main headers
+                const textWidth = doc.widthOfString(line);
+                doc.moveTo(doc.page.margins.left, yPosition + enhancedStyles.header.fontSize + 2)
+                   .lineTo(doc.page.margins.left + Math.min(textWidth, pageWidth * 0.3), yPosition + enhancedStyles.header.fontSize + 2)
+                   .strokeColor('#00bfa6')
+                   .lineWidth(2)
+                   .stroke();
+                
+                yPosition += enhancedStyles.header.fontSize * enhancedStyles.header.lineSpacing + 8;
+                
+            } else if (isSubHeader && line.length > 2) {
+                // Sub-headers with medium emphasis
+                yPosition += enhancedStyles.subheader.fontSize * 0.3;
+                
+                doc.fontSize(enhancedStyles.subheader.fontSize)
+                   .font(enhancedStyles.subheader.font)
+                   .fillColor(enhancedStyles.subheader.color);
+                
+                doc.text(line, doc.page.margins.left, yPosition, {
+                    width: pageWidth,
+                    align: 'left'
+                });
+                
+                yPosition += enhancedStyles.subheader.fontSize * enhancedStyles.subheader.lineSpacing + 5;
+                
+            } else if (isContactInfo) {
+                // Contact information with center alignment
+                doc.fontSize(enhancedStyles.body.fontSize)
+                   .font('Helvetica')
+                   .fillColor('#555');
+                
+                doc.text(line, doc.page.margins.left, yPosition, {
+                    width: pageWidth,
+                    align: 'center'
+                });
+                
+                yPosition += enhancedStyles.body.fontSize * 1.2 + 3;
+                
+            } else if (isBulletPoint) {
+                // Enhanced bullet points with better indentation
+                doc.fontSize(enhancedStyles.bullet.fontSize)
+                   .font(enhancedStyles.bullet.font)
+                   .fillColor(enhancedStyles.bullet.color);
+                
+                // Clean up bullet point text
+                const bulletText = line.replace(/^[•\-*]\s*/, '');
+                
+                // Add custom bullet
+                doc.fillColor('#00bfa6')
+                   .circle(doc.page.margins.left + 8, yPosition + enhancedStyles.bullet.fontSize * 0.4, 2)
+                   .fill();
+                
+                // Add bullet text with proper indentation
+                doc.fillColor(enhancedStyles.bullet.color);
+                const textHeight = doc.heightOfString(bulletText, {
+                    width: pageWidth - 20,
+                    lineGap: enhancedStyles.bullet.fontSize * (enhancedStyles.bullet.lineSpacing - 1)
+                });
+                
+                if (yPosition + textHeight > pageHeight) {
+                    doc.addPage();
+                    yPosition = doc.page.margins.top;
+                    
+                    // Repeat bullet on new page
+                    doc.fillColor('#00bfa6')
+                       .circle(doc.page.margins.left + 8, yPosition + enhancedStyles.bullet.fontSize * 0.4, 2)
+                       .fill();
+                    doc.fillColor(enhancedStyles.bullet.color);
+                }
+                
+                doc.text(bulletText, doc.page.margins.left + 20, yPosition, {
+                    width: pageWidth - 20,
+                    align: 'left',
+                    lineGap: enhancedStyles.bullet.fontSize * (enhancedStyles.bullet.lineSpacing - 1)
+                });
+                
+                yPosition += textHeight + 2;
+                
             } else {
-                // Regular text with word wrapping
+                // Regular body text with enhanced readability
+                doc.fontSize(enhancedStyles.body.fontSize)
+                   .font(enhancedStyles.body.font)
+                   .fillColor(enhancedStyles.body.color);
+                
                 const textHeight = doc.heightOfString(line, {
                     width: pageWidth,
-                    lineGap: fontSize * (lineHeight - 1)
+                    lineGap: enhancedStyles.body.fontSize * (enhancedStyles.body.lineSpacing - 1)
                 });
                 
                 // Check if text fits on current page
@@ -616,7 +735,7 @@ async function generateStyledPDF(content, filename, isResume = true) {
                 doc.text(line, doc.page.margins.left, yPosition, {
                     width: pageWidth,
                     align: 'left',
-                    lineGap: fontSize * (lineHeight - 1)
+                    lineGap: enhancedStyles.body.fontSize * (enhancedStyles.body.lineSpacing - 1)
                 });
                 
                 yPosition += textHeight + 3;
