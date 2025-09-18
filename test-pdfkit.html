@@ -3,71 +3,782 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDFKit Test</title>
+    <title>Enhanced PDFKit Test with Content Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-btn {
+            background: #00bfa6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+            transition: background 0.2s;
+        }
+        .test-btn:hover {
+            background: #009e8e;
+        }
+        .test-btn.secondary {
+            background: #6c757d;
+        }
+        .test-btn.secondary:hover {
+            background: #545b62;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            resize: vertical;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #00bfa6;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+    </style>
 </head>
 <body>
-    <h1>PDFKit Integration Test</h1>
-    <button id="test-pdf">Generate Test PDF</button>
+    <div class="test-container">
+        <h1>🧪 Enhanced PDFKit Test with Content Parser</h1>
+        <p>This test validates the enhanced PDF generation with content parsing using @foliojs-fork/pdfkit</p>
+        
+        <h3>📝 Test Resume Data:</h3>
+        <textarea id="resume-data" placeholder="Paste resume content here for testing...">
+Nishiraj Mane
+AI Engineer | Full Stack Developer | Automation Tester
+
+Pune | manenishiraj@gmail.com | +91-9604372822
+Portfolio Site | GitHub | LinkedIn
+
+Professional Summary
+
+• AI Engineer with strong expertise in full-stack development, automation testing, and conversational AI systems.
+• Currently building DemandTech's website using Next.js and integrating a real-time AI Dialer for lead generation, handling STT, LLM-driven conversation, and TTS for outbound sales calls.
+• Delivered robust, scalable platforms like PrepBot and AlgoPractice, integrating CI/CD-ready ML pipelines across UI, backend, and QA layers.
+• Proficient in Python, Java, Next.js, REST APIs, and test automation, with real-world experience in emotion analysis, data annotation, and AI-powered QA.
+• Skilled in designing smart regression frameworks with Playwright and Selenium, including AI-based failure classification and visual diffing.
+• Exploring AI + UX through classifier-based QA, perceptual UI testing, and cognitive feedback models for software quality.
+
+Projects
+
+DemandTech Website – Next.js
+Full-stack web development using Next.js, with a focus on dynamic content, responsive UI, and API-driven components.
+• Implements interactive dashboards, lead management tools, and integrations for AI-powered workflows.
+• Tech: Next.js, React, Tailwind CSS, Node.js, MongoDB
+
+AlgoPractice – Interactive Algorithm Learning Platform
+Developed a full-stack web application for practicing and sharing algorithms.
+• Features user authentication, Monaco editor, real-time code execution, and quiz engine.
+• Designed with a clean Bootstrap UI for a seamless learning experience.
+Tech: Flask, SQLite, Bootstrap 5, JavaScript, Monaco Editor
+
+Skills
+
+Languages: Python (Advanced), Java (Intermediate), JavaScript (ES6), HTML5, CSS3, SQL, C
+Frontend: React.js, Bootstrap, Tailwind CSS, 3JS, Monaco Editor
+Backend/Database: Flask, SQLite, MySQL, MongoDB (Basics)
+AI/ML: Scikit-learn, Transformers, Whisper, Mistral, Gradio, Emotion Scoring, LLM Integration
+Testing: Playwright, Selenium, Postman/Newman, Visual Diffing, Regression, JMeter
+DevOps/Tools: Git, GitHub, CI/CD (GitHub Actions), VS Code, Eclipse
+Others: Agile, SDLC, STLC, Jira, JSON, POM Framework, Responsive Design
+
+Education
+
+Vishwakarma Institute of Technology, Pune
+BTech in Mechanical Engineering (2022 – 2025)
+GPA: 8.1/10
+Coursework: OOP in Java, Software Testing & Quality, DBMS (SQL)
+
+Cusrow Wadia Institute of Technology, Pune
+Diploma in Mechanical Engineering (2019 – 2022)
+Percentage: 93.06%
+Coursework: Logic Building, Programming Fundamentals, Automation & Control Systems
+
+Experience
+
+Software QA Tester – Webeeyo Softwares Pvt Ltd, Pune
+Dec 2024 – June 2025
+• Developed and maintained Selenium WebDriver test scripts in Java.
+• Conducted cross-browser and responsive UI testing.
+• Logged and tracked 100+ bugs using JIRA; improved triage cycles.
+• Authored reusable test suites using TestNG for regression testing.
+
+Software Engineer – Demandify Media, Pune (Current)
+July 2025
+• Leading full-stack development for DemandTech website in Next.js.
+• Developing and integrating AI-powered Dialer for lead generation with real-time STT, NLP, and TTS.
+• Implementing conversation orchestration, CRM integration, and real-time dashboards for monitoring lead interactions.
+
+Certifications
+
+• Atlassian Agile Project Management
+• Automation Testing – GeeksForGeeks
+• Lambda Test Software Testing Professional Certificate
+• Advanced C Programming – Agarwal Academy (Offline)
+• Prompt Engineering & Generative AI – LinkedIn Learning
+• Java Certification – Great Learning Academy
+
+Personal Details
+
+DOB: 22 April 2003
+Marital Status: Unmarried
+Nationality: Indian
+Languages Known: English, Hindi, Marathi
+        </textarea>
+        
+        <div style="margin: 20px 0;">
+            <button id="test-basic-pdf" class="test-btn">🔧 Test Basic PDFKit</button>
+            <button id="test-enhanced-pdf" class="test-btn">✨ Test Enhanced PDF with Parser</button>
+            <button id="test-parsing-only" class="test-btn secondary">🔍 Test Content Parsing Only</button>
+            <button id="clear-results" class="test-btn secondary">🗑️ Clear Results</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
     
-    <!-- PDFKit -->
-    <script src="https://cdn.jsdelivr.net/npm/pdfkit@0.17.2/js/pdfkit.standalone.js"></script>
+    <!-- Try multiple CDN sources for PDFKit -->
+    <script src="https://unpkg.com/pdfkit@0.17.2/js/pdfkit.standalone.js"></script>
+    <!-- Alternative: foliojs-fork -->
+    <script>
+        // If the first CDN fails, try loading foliojs-fork as backup
+        if (typeof window.PDFDocument === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@foliojs-fork/pdfkit@0.13.0/js/pdfkit.standalone.js';
+            document.head.appendChild(script);
+        }
+    </script>
     <!-- FileSaver.js for browser downloads -->
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     
     <script>
-        document.getElementById('test-pdf').addEventListener('click', function() {
-            try {
-                console.log('Creating PDF...');
+        // Enhanced font mapping for foliojs-fork PDFKit
+        const fontMapping = {
+            'times': 'Times-Roman',
+            'times new roman': 'Times-Roman',
+            'arial': 'Helvetica',
+            'helvetica': 'Helvetica',
+            'courier': 'Courier',
+            'georgia': 'Times-Roman',
+            'calibri': 'Helvetica',
+            'default': 'Helvetica'
+        };
+
+        function mapFontToPDFKit(fontFamily) {
+            if (!fontFamily) return 'Helvetica';
+            const normalizedFont = fontFamily.toLowerCase().replace(/[\"']/g, '').trim();
+            for (const [key, value] of Object.entries(fontMapping)) {
+                if (normalizedFont.includes(key)) {
+                    return value;
+                }
+            }
+            return 'Helvetica';
+        }
+
+        // Enhanced content parser (from main app)
+        function parseResumeContent(content) {
+            const lines = content.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+            const parsedSections = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const nextLine = lines[i + 1] || '';
+                const prevLine = lines[i - 1] || '';
                 
-                // Create PDF document
+                // Enhanced parsing based on HTML resume format
+                if (i === 0 && isName(line)) {
+                    parsedSections.push({ type: 'name', content: line });
+                } else if (isJobTitleLine(line)) {
+                    parsedSections.push({ type: 'job-title-line', content: line });
+                } else if (isContactInfo(line)) {
+                    parsedSections.push({ type: 'contact', content: line });
+                } else if (isSectionHeader(line, nextLine)) {
+                    parsedSections.push({ type: 'header', content: line });
+                } else if (isProjectTitle(line)) {
+                    parsedSections.push({ type: 'project-title', content: line });
+                } else if (isJobTitle(line, prevLine)) {
+                    parsedSections.push({ type: 'job-title', content: line });
+                } else if (isCompanyDate(line)) {
+                    parsedSections.push({ type: 'company-date', content: line });
+                } else if (isEducationTitle(line)) {
+                    parsedSections.push({ type: 'education-title', content: line });
+                } else if (isSkillCategory(line)) {
+                    parsedSections.push({ type: 'skill-category', content: line });
+                } else if (isBulletPoint(line)) {
+                    parsedSections.push({ type: 'bullet', content: line.replace(/^[\u2022\-\*]\s*/, '') });
+                } else if (line.length > 10) {
+                    parsedSections.push({ type: 'text', content: line });
+                }
+            }
+            
+            return parsedSections;
+        }
+
+        function isName(line) {
+            return line.length < 50 && /^[A-Z][a-z]+\s+[A-Z][a-z]+/.test(line) && !line.includes('@') && !line.includes('|');
+        }
+
+        function isContactInfo(line) {
+            return line.includes('@') || 
+                   line.includes('|') || 
+                   /\d{3}[-.]?\d{3}[-.]?\d{4}/.test(line) ||
+                   line.toLowerCase().includes('linkedin') ||
+                   line.toLowerCase().includes('github') ||
+                   line.toLowerCase().includes('portfolio');
+        }
+
+        function isSectionHeader(line, nextLine) {
+            const commonHeaders = [
+                'professional summary', 'summary', 'experience', 'work experience', 
+                'education', 'skills', 'projects', 'certifications', 'personal details',
+                'languages', 'achievements', 'awards', 'publications', 'gpa', 
+                'backend/database', 'frontend', 'testing', 'devops/tools', 'others'
+            ];
+            
+            // Check for exact matches (case insensitive)
+            const lowerLine = line.toLowerCase().trim();
+            if (commonHeaders.includes(lowerLine)) {
+                return true;
+            }
+            
+            // Check for partial matches
+            if (commonHeaders.some(header => lowerLine.includes(header))) {
+                return true;
+            }
+            
+            return line.length < 60 && 
+                   (line.toUpperCase() === line && !line.includes('@') && !line.includes('|')) ||
+                   (line.endsWith(':') && line.length < 40);
+        }
+
+        function isJobTitle(line, prevLine) {
+            return line.length < 80 && 
+                   !line.includes('@') && 
+                   !line.includes('|') &&
+                   (line.includes(' - ') || 
+                    line.includes('Engineer') || 
+                    line.includes('Developer') || 
+                    line.includes('Manager') || 
+                    line.includes('Lead') ||
+                    line.includes('Analyst') ||
+                    line.includes('Specialist'));
+        }
+
+        function isCompanyDate(line) {
+            return line.includes('(') && line.includes(')') && 
+                   (/\d{4}/.test(line) || line.includes('Current') || line.includes('Present'));
+        }
+
+        function isBulletPoint(line) {
+            return line.startsWith('•') || line.startsWith('-') || line.startsWith('*') || 
+                   line.startsWith('\u2022') || /^[\s]*[\u2022\-\*]/.test(line);
+        }
+
+        function isJobTitleLine(line) {
+            // Matches the subtitle line under the name (e.g., "AI Engineer | Full Stack Developer | Automation Tester")
+            return line.includes('|') && 
+                   (line.toLowerCase().includes('engineer') || 
+                    line.toLowerCase().includes('developer') || 
+                    line.toLowerCase().includes('analyst') || 
+                    line.toLowerCase().includes('manager') || 
+                    line.toLowerCase().includes('tester') ||
+                    line.toLowerCase().includes('lead'));
+        }
+
+        function isProjectTitle(line) {
+            // Project titles often have dashes or specific patterns
+            return (line.includes(' – ') || line.includes(' - ')) &&
+                   !line.includes('(') && !line.includes('@') &&
+                   line.length < 100;
+        }
+
+        function isEducationTitle(line) {
+            // Education institution names
+            return (line.toLowerCase().includes('university') ||
+                    line.toLowerCase().includes('institute') ||
+                    line.toLowerCase().includes('college') ||
+                    line.toLowerCase().includes('school')) &&
+                   !line.includes('(') && !line.includes('@');
+        }
+
+        function isSkillCategory(line) {
+            // Skill category headers like "Languages:", "Frontend:", etc.
+            return line.endsWith(':') && 
+                   line.length < 50 &&
+                   (line.toLowerCase().includes('language') ||
+                    line.toLowerCase().includes('frontend') ||
+                    line.toLowerCase().includes('backend') ||
+                    line.toLowerCase().includes('database') ||
+                    line.toLowerCase().includes('testing') ||
+                    line.toLowerCase().includes('devops') ||
+                    line.toLowerCase().includes('tools') ||
+                    line.toLowerCase().includes('others') ||
+                    line.toLowerCase().includes('skills'));
+        }
+
+        function addResult(message, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'result' + (isError ? ' error' : '');
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Test basic PDFKit functionality
+        function testBasicPDF() {
+            try {
+                // Check if PDFDocument is available
+                if (typeof window.PDFDocument === 'undefined') {
+                    addResult('❌ PDFDocument constructor not available. Trying to reload library...', true);
+                    
+                    // Try loading PDFKit from alternative source
+                    const script = document.createElement('script');
+                    script.onload = function() {
+                        addResult('🔄 PDFKit library reloaded. Please try the test again.');
+                    };
+                    script.onerror = function() {
+                        addResult('❌ Failed to load PDFKit from alternative source. Please check your internet connection.', true);
+                    };
+                    script.src = 'https://unpkg.com/pdfkit@0.13.4/js/pdfkit.standalone.js';
+                    document.head.appendChild(script);
+                    return;
+                }
+                
+                addResult('🔧 Testing basic PDFKit functionality...');
+                addResult('✅ PDFDocument constructor available: ' + typeof window.PDFDocument);
+                
                 const doc = new window.PDFDocument({
                     size: 'LETTER',
                     margins: { top: 40, bottom: 40, left: 40, right: 40 }
                 });
                 
-                // Collect PDF data
                 const chunks = [];
-                doc.on('data', function(chunk) {
-                    chunks.push(chunk);
-                });
+                doc.on('data', chunk => chunks.push(chunk));
                 
-                doc.on('end', function() {
-                    console.log('PDF data collected, creating blob...');
+                doc.on('end', () => {
                     const blob = new Blob(chunks, { type: 'application/pdf' });
-                    
-                    // Download using FileSaver.js
                     if (window.saveAs) {
-                        window.saveAs(blob, 'pdfkit-test.pdf');
-                        console.log('PDF downloaded successfully');
+                        window.saveAs(blob, 'basic-pdfkit-test.pdf');
+                        addResult('✅ Basic PDFKit test successful! PDF downloaded.');
                     } else {
-                        // Fallback download method
+                        addResult('⚠️ FileSaver.js not available, using fallback download method.');
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = 'pdfkit-test.pdf';
+                        a.download = 'basic-pdfkit-test.pdf';
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
-                        console.log('PDF downloaded using fallback method');
+                        addResult('✅ Basic PDFKit test successful! PDF downloaded using fallback.');
                     }
                 });
                 
-                // Add content
                 doc.font('Helvetica')
-                   .fontSize(12)
-                   .text('This is a test PDF generated with PDFKit!', 100, 100);
+                   .fontSize(16)
+                   .text('Basic PDFKit Test', 100, 100);
+                
+                doc.fontSize(12)
+                   .text('This is a basic test of the PDFKit library.', 100, 130);
                 
                 doc.fontSize(10)
-                   .text('If you can see this, the PDFKit integration is working correctly.', 100, 150);
+                   .fillColor('#666')
+                   .text('Generated on: ' + new Date().toLocaleString(), 100, 160);
                 
-                // Finalize
+                doc.fontSize(8)
+                   .text('PDFDocument constructor type: ' + typeof window.PDFDocument, 100, 180);
+                
                 doc.end();
                 
             } catch (error) {
-                console.error('PDF generation failed:', error);
-                alert('PDF generation failed: ' + error.message);
+                console.error('Basic PDFKit test error:', error);
+                addResult('❌ Basic PDFKit test failed: ' + error.message + '\n\nError details: ' + error.stack, true);
             }
+        }
+
+        // Test enhanced PDF with content parser
+        function testEnhancedPDF() {
+            try {
+                // Check if PDFDocument is available
+                if (typeof window.PDFDocument === 'undefined') {
+                    addResult('❌ PDFDocument constructor not available. Please run the basic test first to load the library.', true);
+                    return;
+                }
+                
+                const resumeData = document.getElementById('resume-data').value;
+                if (!resumeData.trim()) {
+                    addResult('⚠️ Please provide resume data to test enhanced PDF generation.', true);
+                    return;
+                }
+
+                addResult('✨ Testing enhanced PDF generation with content parser...');
+                addResult('✅ PDFDocument constructor available: ' + typeof window.PDFDocument);
+                
+                const parsedContent = parseResumeContent(resumeData);
+                addResult(`📈 Parsed ${parsedContent.length} content sections`);
+
+                const doc = new window.PDFDocument({
+                    size: 'LETTER',
+                    margins: { top: 30, bottom: 30, left: 30, right: 30 }
+                });
+                
+                const chunks = [];
+                doc.on('data', chunk => chunks.push(chunk));
+                
+                doc.on('end', () => {
+                    try {
+                        const blob = new Blob(chunks, { type: 'application/pdf' });
+                        if (window.saveAs) {
+                            window.saveAs(blob, 'enhanced-resume-test.pdf');
+                            addResult('✅ Enhanced PDF test successful! Professional resume PDF downloaded.');
+                        } else {
+                            // Fallback download
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'enhanced-resume-test.pdf';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            addResult('✅ Enhanced PDF test successful! PDF downloaded using fallback.');
+                        }
+                    } catch (downloadError) {
+                        console.error('Download error:', downloadError);
+                        addResult('❌ PDF generation completed but download failed: ' + downloadError.message, true);
+                    }
+                });
+
+                let yPosition = doc.page.margins.top;
+                const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+                const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+
+                // Remove the watermark - no header text
+
+                for (let i = 0; i < parsedContent.length; i++) {
+                    const section = parsedContent[i];
+                    const content = section.content;
+                    
+                    // Check if we need a new page
+                    if (yPosition + 50 > pageHeight) {
+                        doc.addPage();
+                        yPosition = doc.page.margins.top;
+                    }
+
+                    try {
+                        switch (section.type) {
+                            case 'name':
+                                // Name styling - large, centered, bold
+                                yPosition += 10;
+                                doc.fontSize(18)
+                                   .font('Helvetica-Bold')
+                                   .fillColor('#000000');
+                                
+                                doc.text(content, doc.page.margins.left, yPosition, {
+                                    width: pageWidth,
+                                    align: 'center'
+                                });
+                                yPosition += 25;
+                                break;
+
+                            case 'job-title-line':
+                                // Job title line under name (AI Engineer | Full Stack Developer)
+                                doc.fontSize(11)
+                                   .font('Helvetica-Bold')
+                                   .fillColor('#000000');
+                                
+                                doc.text(content, doc.page.margins.left, yPosition, {
+                                    width: pageWidth,
+                                    align: 'center'
+                                });
+                                yPosition += 18;
+                                break;
+
+                            case 'contact':
+                                // Contact info - smaller, centered
+                                doc.fontSize(10)
+                                   .font('Helvetica')
+                                   .fillColor('#333');
+                                
+                                doc.text(content, doc.page.margins.left, yPosition, {
+                                    width: pageWidth,
+                                    align: 'center'
+                                });
+                                yPosition += 15;
+                                break;
+
+                            case 'header':
+                                // Section headers - bold, with underline
+                                yPosition += 12;
+                                doc.fontSize(12)
+                                   .font('Helvetica-Bold')
+                                   .fillColor('#000000');
+                                
+                                doc.text(content, doc.page.margins.left, yPosition, {
+                                    width: pageWidth,
+                                    align: 'left'
+                                });
+                                
+                                // Add underline
+                                yPosition += 16;
+                                doc.moveTo(doc.page.margins.left, yPosition)
+                                   .lineTo(doc.page.margins.left + pageWidth, yPosition)
+                                   .strokeColor('#000000')
+                                   .lineWidth(0.5)
+                                   .stroke();
+                                
+                                yPosition += 8;
+                                break;
+
+                            case 'project-title':
+                                // Project titles - bold, slightly larger
+                                yPosition += 6;
+                                doc.fontSize(11)
+                                   .font('Helvetica-Bold')
+                                   .fillColor('#000000');
+                                
+                                doc.text(content, doc.page.margins.left, yPosition, {
+                                    width: pageWidth,
+                                    align: 'left'
+                                });
+                                yPosition += 15;
+                                break;
+
+                            case 'education-title':
+                                // Education institution names - bold
+                                yPosition += 5;
+                                doc.fontSize(11)
+                                   .font('Helvetica-Bold')
+                                   .fillColor('#000000');
+                                
+                                doc.text(content, doc.page.margins.left, yPosition, {
+                                    width: pageWidth,
+                                    align: 'left'
+                                });
+                                yPosition += 15;
+                                break;
+
+                            case 'skill-category':
+                                // Skill categories - bold, inline with content
+                                yPosition += 4;
+                                doc.fontSize(10)
+                                   .font('Helvetica-Bold')
+                                   .fillColor('#000000');
+                                
+                                doc.text(content, doc.page.margins.left, yPosition, {
+                                    width: pageWidth,
+                                    align: 'left'
+                                });
+                                yPosition += 14;
+                                break;
+
+                            case 'job-title':
+                                // Job titles - bold
+                                yPosition += 5;
+                                doc.fontSize(11)
+                                   .font('Helvetica-Bold')
+                                   .fillColor('#000000');
+                                
+                                doc.text(content, doc.page.margins.left, yPosition, {
+                                    width: pageWidth,
+                                    align: 'left'
+                                });
+                                yPosition += 15;
+                                break;
+
+                            case 'company-date':
+                                // Company and date info - italic
+                                doc.fontSize(10)
+                                   .font('Helvetica-Oblique')
+                                   .fillColor('#555');
+                                
+                                doc.text(content, doc.page.margins.left, yPosition, {
+                                    width: pageWidth,
+                                    align: 'left'
+                                });
+                                yPosition += 14;
+                                break;
+
+                            case 'bullet':
+                                // Bullet points - with proper indentation and spacing
+                                doc.fontSize(10)
+                                   .font('Helvetica')
+                                   .fillColor('#333');
+                                
+                                // Add bullet character with better positioning
+                                doc.text('•', doc.page.margins.left + 10, yPosition);
+                                
+                                // Split long content into multiple lines if needed
+                                const bulletMaxWidth = pageWidth - 25;
+                                const bulletWords = content.split(' ');
+                                let bulletCurrentLine = '';
+                                let bulletLines = [];
+                                
+                                for (let word of bulletWords) {
+                                    const testLine = bulletCurrentLine + (bulletCurrentLine ? ' ' : '') + word;
+                                    const testWidth = doc.widthOfString(testLine);
+                                    
+                                    if (testWidth > bulletMaxWidth && bulletCurrentLine) {
+                                        bulletLines.push(bulletCurrentLine);
+                                        bulletCurrentLine = word;
+                                    } else {
+                                        bulletCurrentLine = testLine;
+                                    }
+                                }
+                                if (bulletCurrentLine) bulletLines.push(bulletCurrentLine);
+                                
+                                // Render each line with proper spacing
+                                let bulletLineY = yPosition;
+                                for (let i = 0; i < bulletLines.length; i++) {
+                                    doc.text(bulletLines[i], doc.page.margins.left + 25, bulletLineY);
+                                    if (i < bulletLines.length - 1) bulletLineY += 12; // Line spacing within bullet
+                                }
+                                
+                                yPosition = bulletLineY + 18; // Space after bullet point
+                                break;
+
+                            default:
+                                // Regular text - standard formatting with proper spacing
+                                doc.fontSize(10)
+                                   .font('Helvetica')
+                                   .fillColor('#333');
+                                
+                                // Handle long text with proper line wrapping
+                                const textMaxWidth = pageWidth;
+                                const textWords = content.split(' ');
+                                let textCurrentLine = '';
+                                let textLines = [];
+                                
+                                for (let word of textWords) {
+                                    const testLine = textCurrentLine + (textCurrentLine ? ' ' : '') + word;
+                                    const testWidth = doc.widthOfString(testLine);
+                                    
+                                    if (testWidth > textMaxWidth && textCurrentLine) {
+                                        textLines.push(textCurrentLine);
+                                        textCurrentLine = word;
+                                    } else {
+                                        textCurrentLine = testLine;
+                                    }
+                                }
+                                if (textCurrentLine) textLines.push(textCurrentLine);
+                                
+                                // Render each line with proper spacing
+                                let textLineY = yPosition;
+                                for (let i = 0; i < textLines.length; i++) {
+                                    doc.text(textLines[i], doc.page.margins.left, textLineY);
+                                    if (i < textLines.length - 1) textLineY += 12; // Line spacing within paragraph
+                                }
+                                
+                                yPosition = textLineY + 15; // Space after paragraph
+                                break;
+                        }
+                    } catch (sectionError) {
+                        console.warn('Error processing section:', section.type, sectionError);
+                        // Skip this section and continue
+                        yPosition += 10;
+                    }
+                }
+                
+                doc.end();
+                
+            } catch (error) {
+                console.error('Enhanced PDF test error:', error);
+                addResult('❌ Enhanced PDF test failed: ' + error.message + '\n\nError details: ' + error.stack, true);
+            }
+        }
+
+        // Test content parsing only
+        function testParsingOnly() {
+            try {
+                const resumeData = document.getElementById('resume-data').value;
+                if (!resumeData.trim()) {
+                    addResult('⚠️ Please provide resume data to test content parsing.', true);
+                    return;
+                }
+
+                addResult('🔍 Testing content parsing functionality...');
+                
+                const parsedContent = parseResumeContent(resumeData);
+                
+                const contentAnalysis = {};
+                parsedContent.forEach(section => {
+                    contentAnalysis[section.type] = (contentAnalysis[section.type] || 0) + 1;
+                });
+                
+                let analysisHtml = `<strong>📈 Content Analysis:</strong><br>`;
+                analysisHtml += `Total sections: ${parsedContent.length}<br><br>`;
+                
+                Object.entries(contentAnalysis).forEach(([type, count]) => {
+                    const typeEmoji = {
+                        'name': '👤',
+                        'contact': '📞',
+                        'header': '📝',
+                        'job-title': '💼',
+                        'company-date': '🏢',
+                        'bullet': '•',
+                        'text': '📄'
+                    };
+                    analysisHtml += `${typeEmoji[type] || '📄'} ${type}: ${count} items<br>`;
+                });
+                
+                analysisHtml += `<br><strong>🔍 Sample Parsed Content:</strong><br>`;
+                parsedContent.slice(0, 5).forEach((section, index) => {
+                    const preview = section.content.length > 50 ? section.content.substring(0, 50) + '...' : section.content;
+                    analysisHtml += `${index + 1}. [${section.type.toUpperCase()}] ${preview}<br>`;
+                });
+                
+                addResult(analysisHtml);
+                
+            } catch (error) {
+                addResult('❌ Content parsing test failed: ' + error.message, true);
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add library check on page load
+            setTimeout(() => {
+                if (typeof window.PDFDocument === 'undefined') {
+                    addResult('⚠️ PDFDocument not loaded. Click "Test Basic PDFKit" to load the library.', true);
+                } else {
+                    addResult('✅ PDFDocument loaded successfully. Constructor type: ' + typeof window.PDFDocument);
+                }
+            }, 1000);
+            
+            document.getElementById('test-basic-pdf').addEventListener('click', testBasicPDF);
+            document.getElementById('test-enhanced-pdf').addEventListener('click', testEnhancedPDF);
+            document.getElementById('test-parsing-only').addEventListener('click', testParsingOnly);
+            document.getElementById('clear-results').addEventListener('click', clearResults);
+            
+            addResult('🚀 Enhanced PDFKit Test Environment Ready! Choose a test to run.');
         });
     </script>
 </body>

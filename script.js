@@ -527,14 +527,14 @@ async function generateStyledPDF(content, filename, isResume = true) {
         `;
         btn.disabled = true;
 
-        // Create PDF document with PDFKit
+        // Create PDF document with PDFKit (compact margins like second image)
         const doc = new window.PDFDocument({
             size: 'LETTER',
             margins: {
-                top: originalResumeStyle.margins.top || 40,
-                bottom: originalResumeStyle.margins.bottom || 40,
-                left: originalResumeStyle.margins.left || 40,
-                right: originalResumeStyle.margins.right || 40
+                top: 30,
+                bottom: 30, 
+                left: 30,
+                right: 30
             }
         });
 
@@ -576,14 +576,158 @@ async function generateStyledPDF(content, filename, isResume = true) {
             }
         });
 
+// Enhanced content parser for better resume formatting based on HTML template
+function parseResumeContent(content) {
+    // Split content into lines and clean up
+    const lines = content.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+    const parsedSections = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const nextLine = lines[i + 1] || '';
+        const prevLine = lines[i - 1] || '';
+        
+        // Enhanced parsing based on HTML resume format
+        if (i === 0 && isName(line)) {
+            parsedSections.push({ type: 'name', content: line });
+        } else if (isJobTitleLine(line)) {
+            parsedSections.push({ type: 'job-title-line', content: line });
+        } else if (isContactInfo(line)) {
+            parsedSections.push({ type: 'contact', content: line });
+        } else if (isSectionHeader(line, nextLine)) {
+            parsedSections.push({ type: 'header', content: line });
+        } else if (isProjectTitle(line)) {
+            parsedSections.push({ type: 'project-title', content: line });
+        } else if (isJobTitle(line, prevLine)) {
+            parsedSections.push({ type: 'job-title', content: line });
+        } else if (isCompanyDate(line)) {
+            parsedSections.push({ type: 'company-date', content: line });
+        } else if (isEducationTitle(line)) {
+            parsedSections.push({ type: 'education-title', content: line });
+        } else if (isSkillCategory(line)) {
+            parsedSections.push({ type: 'skill-category', content: line });
+        } else if (isBulletPoint(line)) {
+            parsedSections.push({ type: 'bullet', content: line.replace(/^[\u2022\-\*]\s*/, '') });
+        } else if (line.length > 10) {
+            parsedSections.push({ type: 'text', content: line });
+        }
+    }
+    
+    return parsedSections;
+}
+
+function isName(line) {
+    // Usually the first line, all caps or title case, no special characters
+    return line.length < 50 && /^[A-Z][a-z]+\s+[A-Z][a-z]+/.test(line) && !line.includes('@') && !line.includes('|');
+}
+
+function isContactInfo(line) {
+    return line.includes('@') || 
+           line.includes('|') || 
+           /\d{3}[-.]?\d{3}[-.]?\d{4}/.test(line) ||
+           line.toLowerCase().includes('linkedin') ||
+           line.toLowerCase().includes('github') ||
+           line.toLowerCase().includes('portfolio');
+}
+
+function isSectionHeader(line, nextLine) {
+    const commonHeaders = [
+        'professional summary', 'summary', 'experience', 'work experience', 
+        'education', 'skills', 'projects', 'certifications', 'personal details',
+        'languages', 'achievements', 'awards', 'publications', 'gpa', 
+        'backend/database', 'frontend', 'testing', 'devops/tools', 'others'
+    ];
+    
+    // Check for exact matches (case insensitive)
+    const lowerLine = line.toLowerCase().trim();
+    if (commonHeaders.includes(lowerLine)) {
+        return true;
+    }
+    
+    // Check for partial matches
+    if (commonHeaders.some(header => lowerLine.includes(header))) {
+        return true;
+    }
+    
+    return line.length < 60 && 
+           (line.toUpperCase() === line && !line.includes('@') && !line.includes('|')) ||
+           (line.endsWith(':') && line.length < 40);
+}
+
+function isJobTitle(line, prevLine) {
+    // Job titles often follow company names or are standalone
+    return line.length < 80 && 
+           !line.includes('@') && 
+           !line.includes('|') &&
+           (line.includes(' - ') || 
+            line.includes('Engineer') || 
+            line.includes('Developer') || 
+            line.includes('Manager') || 
+            line.includes('Lead') ||
+            line.includes('Analyst') ||
+            line.includes('Specialist'));
+}
+
+function isCompanyDate(line) {
+    // Company names with dates
+    return line.includes('(') && line.includes(')') && 
+           (/\d{4}/.test(line) || line.includes('Current') || line.includes('Present'));
+}
+
+function isBulletPoint(line) {
+    return line.startsWith('•') || line.startsWith('-') || line.startsWith('*') || 
+           line.startsWith('\u2022') || /^[\s]*[\u2022\-\*]/.test(line);
+}
+
+function isJobTitleLine(line) {
+    // Matches the subtitle line under the name (e.g., "AI Engineer | Full Stack Developer | Automation Tester")
+    return line.includes('|') && 
+           (line.toLowerCase().includes('engineer') || 
+            line.toLowerCase().includes('developer') || 
+            line.toLowerCase().includes('analyst') || 
+            line.toLowerCase().includes('manager') || 
+            line.toLowerCase().includes('tester') ||
+            line.toLowerCase().includes('lead'));
+}
+
+function isProjectTitle(line) {
+    // Project titles often have dashes or specific patterns
+    return (line.includes(' – ') || line.includes(' - ')) &&
+           !line.includes('(') && !line.includes('@') &&
+           line.length < 100;
+}
+
+function isEducationTitle(line) {
+    // Education institution names
+    return (line.toLowerCase().includes('university') ||
+            line.toLowerCase().includes('institute') ||
+            line.toLowerCase().includes('college') ||
+            line.toLowerCase().includes('school')) &&
+           !line.includes('(') && !line.includes('@');
+}
+
+function isSkillCategory(line) {
+    // Skill category headers like "Languages:", "Frontend:", etc.
+    return line.endsWith(':') && 
+           line.length < 50 &&
+           (line.toLowerCase().includes('language') ||
+            line.toLowerCase().includes('frontend') ||
+            line.toLowerCase().includes('backend') ||
+            line.toLowerCase().includes('database') ||
+            line.toLowerCase().includes('testing') ||
+            line.toLowerCase().includes('devops') ||
+            line.toLowerCase().includes('tools') ||
+            line.toLowerCase().includes('others') ||
+            line.toLowerCase().includes('skills'));
+}
         // Enhanced document styling with foliojs-fork capabilities
         const fontSize = originalResumeStyle.fontSize || 11;
         const fontFamily = mapFontToPDFKit(originalResumeStyle.fontFamily) || 'Helvetica';
         const lineHeight = originalResumeStyle.lineHeight || 1.4;
         const textColor = originalResumeStyle.textColor || '#2c3e50';
 
-        // Process content for enhanced PDF with better styling
-        const lines = content.split('\n');
+        // Parse content using enhanced parser
+        const parsedContent = parseResumeContent(content);
         let yPosition = doc.page.margins.top;
         const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
         const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
@@ -593,152 +737,222 @@ async function generateStyledPDF(content, filename, isResume = true) {
            .fontSize(fontSize)
            .fillColor(textColor);
 
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
+        for (let i = 0; i < parsedContent.length; i++) {
+            const section = parsedContent[i];
+            const content = section.content;
             
-            // Skip empty lines but add appropriate spacing
-            if (!line) {
-                yPosition += fontSize * 0.3;
-                continue;
-            }
-
             // Check if we need a new page
-            if (yPosition + (fontSize * lineHeight) > pageHeight) {
+            if (yPosition + (fontSize * lineHeight * 2) > pageHeight) {
                 doc.addPage();
                 yPosition = doc.page.margins.top;
             }
 
-            // Enhanced content detection and styling
-            const isMainHeader = line.length < 60 && 
-                               (line.toUpperCase() === line || 
-                                /^[A-Z][A-Z\s]+$/.test(line)) &&
-                               !line.includes('@') && !line.includes('|');
-            
-            const isSubHeader = !isMainHeader && line.length < 50 && 
-                              (line.includes(':') || 
-                               /^[A-Z][A-Za-z\s&-]+$/.test(line)) &&
-                              !line.includes('@');
-            
-            const isBulletPoint = line.startsWith('•') || line.startsWith('-') || line.startsWith('*');
-            const isContactInfo = line.includes('@') || line.includes('|') || 
-                                /\d{3}[-.]?\d{3}[-.]?\d{4}/.test(line);
-
-            if (isMainHeader && line.length > 2) {
-                // Main headers with enhanced styling
-                yPosition += enhancedStyles.header.fontSize * 0.5;
-                
-                doc.fontSize(enhancedStyles.header.fontSize)
-                   .font(enhancedStyles.header.font)
-                   .fillColor(enhancedStyles.header.color);
-                
-                // Add subtle underline for main headers
-                doc.text(line, doc.page.margins.left, yPosition, {
-                    width: pageWidth,
-                    align: 'left'
-                });
-                
-                // Add decorative line under main headers
-                const textWidth = doc.widthOfString(line);
-                doc.moveTo(doc.page.margins.left, yPosition + enhancedStyles.header.fontSize + 2)
-                   .lineTo(doc.page.margins.left + Math.min(textWidth, pageWidth * 0.3), yPosition + enhancedStyles.header.fontSize + 2)
-                   .strokeColor('#00bfa6')
-                   .lineWidth(2)
-                   .stroke();
-                
-                yPosition += enhancedStyles.header.fontSize * enhancedStyles.header.lineSpacing + 8;
-                
-            } else if (isSubHeader && line.length > 2) {
-                // Sub-headers with medium emphasis
-                yPosition += enhancedStyles.subheader.fontSize * 0.3;
-                
-                doc.fontSize(enhancedStyles.subheader.fontSize)
-                   .font(enhancedStyles.subheader.font)
-                   .fillColor(enhancedStyles.subheader.color);
-                
-                doc.text(line, doc.page.margins.left, yPosition, {
-                    width: pageWidth,
-                    align: 'left'
-                });
-                
-                yPosition += enhancedStyles.subheader.fontSize * enhancedStyles.subheader.lineSpacing + 5;
-                
-            } else if (isContactInfo) {
-                // Contact information with center alignment
-                doc.fontSize(enhancedStyles.body.fontSize)
-                   .font('Helvetica')
-                   .fillColor('#555');
-                
-                doc.text(line, doc.page.margins.left, yPosition, {
-                    width: pageWidth,
-                    align: 'center'
-                });
-                
-                yPosition += enhancedStyles.body.fontSize * 1.2 + 3;
-                
-            } else if (isBulletPoint) {
-                // Enhanced bullet points with better indentation
-                doc.fontSize(enhancedStyles.bullet.fontSize)
-                   .font(enhancedStyles.bullet.font)
-                   .fillColor(enhancedStyles.bullet.color);
-                
-                // Clean up bullet point text
-                const bulletText = line.replace(/^[•\-*]\s*/, '');
-                
-                // Add custom bullet
-                doc.fillColor('#00bfa6')
-                   .circle(doc.page.margins.left + 8, yPosition + enhancedStyles.bullet.fontSize * 0.4, 2)
-                   .fill();
-                
-                // Add bullet text with proper indentation
-                doc.fillColor(enhancedStyles.bullet.color);
-                const textHeight = doc.heightOfString(bulletText, {
-                    width: pageWidth - 20,
-                    lineGap: enhancedStyles.bullet.fontSize * (enhancedStyles.bullet.lineSpacing - 1)
-                });
-                
-                if (yPosition + textHeight > pageHeight) {
-                    doc.addPage();
-                    yPosition = doc.page.margins.top;
+            switch (section.type) {
+                case 'name':
+                    // Name styling - large, centered, bold
+                    yPosition += 10;
+                    doc.fontSize(18)
+                       .font('Helvetica-Bold')
+                       .fillColor('#000000');
                     
-                    // Repeat bullet on new page
-                    doc.fillColor('#00bfa6')
-                       .circle(doc.page.margins.left + 8, yPosition + enhancedStyles.bullet.fontSize * 0.4, 2)
-                       .fill();
-                    doc.fillColor(enhancedStyles.bullet.color);
-                }
-                
-                doc.text(bulletText, doc.page.margins.left + 20, yPosition, {
-                    width: pageWidth - 20,
-                    align: 'left',
-                    lineGap: enhancedStyles.bullet.fontSize * (enhancedStyles.bullet.lineSpacing - 1)
-                });
-                
-                yPosition += textHeight + 2;
-                
-            } else {
-                // Regular body text with enhanced readability
-                doc.fontSize(enhancedStyles.body.fontSize)
-                   .font(enhancedStyles.body.font)
-                   .fillColor(enhancedStyles.body.color);
-                
-                const textHeight = doc.heightOfString(line, {
-                    width: pageWidth,
-                    lineGap: enhancedStyles.body.fontSize * (enhancedStyles.body.lineSpacing - 1)
-                });
-                
-                // Check if text fits on current page
-                if (yPosition + textHeight > pageHeight) {
-                    doc.addPage();
-                    yPosition = doc.page.margins.top;
-                }
-                
-                doc.text(line, doc.page.margins.left, yPosition, {
-                    width: pageWidth,
-                    align: 'left',
-                    lineGap: enhancedStyles.body.fontSize * (enhancedStyles.body.lineSpacing - 1)
-                });
-                
-                yPosition += textHeight + 3;
+                    doc.text(content, doc.page.margins.left, yPosition, {
+                        width: pageWidth,
+                        align: 'center'
+                    });
+                    yPosition += 25;
+                    break;
+
+                case 'job-title-line':
+                    // Job title line under name (AI Engineer | Full Stack Developer)
+                    doc.fontSize(11)
+                       .font('Helvetica-Bold')
+                       .fillColor('#000000');
+                    
+                    doc.text(content, doc.page.margins.left, yPosition, {
+                        width: pageWidth,
+                        align: 'center'
+                    });
+                    yPosition += 18;
+                    break;
+
+                case 'contact':
+                    // Contact info - smaller, centered
+                    doc.fontSize(10)
+                       .font('Helvetica')
+                       .fillColor('#333');
+                    
+                    doc.text(content, doc.page.margins.left, yPosition, {
+                        width: pageWidth,
+                        align: 'center'
+                    });
+                    yPosition += 15;
+                    break;
+
+                case 'header':
+                    // Section headers - bold, with underline
+                    yPosition += 12;
+                    doc.fontSize(12)
+                       .font('Helvetica-Bold')
+                       .fillColor('#000000');
+                    
+                    doc.text(content, doc.page.margins.left, yPosition, {
+                        width: pageWidth,
+                        align: 'left'
+                    });
+                    
+                    // Add underline
+                    yPosition += 16;
+                    doc.moveTo(doc.page.margins.left, yPosition)
+                       .lineTo(doc.page.margins.left + pageWidth, yPosition)
+                       .strokeColor('#000000')
+                       .lineWidth(0.5)
+                       .stroke();
+                    
+                    yPosition += 8;
+                    break;
+
+                case 'project-title':
+                    // Project titles - bold, slightly larger
+                    yPosition += 6;
+                    doc.fontSize(11)
+                       .font('Helvetica-Bold')
+                       .fillColor('#000000');
+                    
+                    doc.text(content, doc.page.margins.left, yPosition, {
+                        width: pageWidth,
+                        align: 'left'
+                    });
+                    yPosition += 15;
+                    break;
+
+                case 'education-title':
+                    // Education institution names - bold
+                    yPosition += 5;
+                    doc.fontSize(11)
+                       .font('Helvetica-Bold')
+                       .fillColor('#000000');
+                    
+                    doc.text(content, doc.page.margins.left, yPosition, {
+                        width: pageWidth,
+                        align: 'left'
+                    });
+                    yPosition += 15;
+                    break;
+
+                case 'skill-category':
+                    // Skill categories - bold, inline with content
+                    yPosition += 4;
+                    doc.fontSize(10)
+                       .font('Helvetica-Bold')
+                       .fillColor('#000000');
+                    
+                    doc.text(content, doc.page.margins.left, yPosition, {
+                        width: pageWidth,
+                        align: 'left'
+                    });
+                    yPosition += 14;
+                    break;
+
+                case 'job-title':
+                    // Job titles - bold
+                    yPosition += 5;
+                    doc.fontSize(11)
+                       .font('Helvetica-Bold')
+                       .fillColor('#000000');
+                    
+                    doc.text(content, doc.page.margins.left, yPosition, {
+                        width: pageWidth,
+                        align: 'left'
+                    });
+                    yPosition += 15;
+                    break;
+
+                case 'company-date':
+                    // Company and date info - italic
+                    doc.fontSize(10)
+                       .font('Helvetica-Oblique')
+                       .fillColor('#555');
+                    
+                    doc.text(content, doc.page.margins.left, yPosition, {
+                        width: pageWidth,
+                        align: 'left'
+                    });
+                    yPosition += 14;
+                    break;
+
+                case 'bullet':
+                    // Bullet points - with proper indentation and spacing
+                    doc.fontSize(10)
+                       .font('Helvetica')
+                       .fillColor('#333');
+                    
+                    // Add bullet character with better positioning
+                    doc.text('•', doc.page.margins.left + 10, yPosition);
+                    
+                    // Split long content into multiple lines if needed
+                    const bulletMaxWidth = pageWidth - 25;
+                    const bulletWords = content.split(' ');
+                    let bulletCurrentLine = '';
+                    let bulletLines = [];
+                    
+                    for (let word of bulletWords) {
+                        const testLine = bulletCurrentLine + (bulletCurrentLine ? ' ' : '') + word;
+                        const testWidth = doc.widthOfString(testLine);
+                        
+                        if (testWidth > bulletMaxWidth && bulletCurrentLine) {
+                            bulletLines.push(bulletCurrentLine);
+                            bulletCurrentLine = word;
+                        } else {
+                            bulletCurrentLine = testLine;
+                        }
+                    }
+                    if (bulletCurrentLine) bulletLines.push(bulletCurrentLine);
+                    
+                    // Render each line with proper spacing
+                    let bulletLineY = yPosition;
+                    for (let i = 0; i < bulletLines.length; i++) {
+                        doc.text(bulletLines[i], doc.page.margins.left + 25, bulletLineY);
+                        if (i < bulletLines.length - 1) bulletLineY += 12; // Line spacing within bullet
+                    }
+                    
+                    yPosition = bulletLineY + 18; // Space after bullet point
+                    break;
+
+                case 'text':
+                default:
+                    // Regular text - standard formatting with proper spacing
+                    doc.fontSize(10)
+                       .font('Helvetica')
+                       .fillColor('#333');
+                    
+                    // Handle long text with proper line wrapping
+                    const textMaxWidth = pageWidth;
+                    const textWords = content.split(' ');
+                    let textCurrentLine = '';
+                    let textLines = [];
+                    
+                    for (let word of textWords) {
+                        const testLine = textCurrentLine + (textCurrentLine ? ' ' : '') + word;
+                        const testWidth = doc.widthOfString(testLine);
+                        
+                        if (testWidth > textMaxWidth && textCurrentLine) {
+                            textLines.push(textCurrentLine);
+                            textCurrentLine = word;
+                        } else {
+                            textCurrentLine = testLine;
+                        }
+                    }
+                    if (textCurrentLine) textLines.push(textCurrentLine);
+                    
+                    // Render each line with proper spacing
+                    let textLineY = yPosition;
+                    for (let i = 0; i < textLines.length; i++) {
+                        doc.text(textLines[i], doc.page.margins.left, textLineY);
+                        if (i < textLines.length - 1) textLineY += 12; // Line spacing within paragraph
+                    }
+                    
+                    yPosition = textLineY + 15; // Space after paragraph
+                    break;
             }
         }
 
