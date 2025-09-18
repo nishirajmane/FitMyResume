@@ -1,9 +1,22 @@
 // script.js - Resume Tailor App Logic
 
 // ====== CONFIGURATION ======
-// Gemini API configuration - will use environment variable for deployment
+// API configuration - will use environment variables for deployment
 let GEMINI_API_KEY = '';
+let GROQ_API_KEY = '';
 const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+const GROQ_API_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+
+// Groq models configuration (free models)
+const GROQ_MODELS = {
+    'llama-3.1-70b-versatile': 'Llama 3.1 70B (Versatile)',
+    'llama-3.1-8b-instant': 'Llama 3.1 8B (Fast)',
+    'mixtral-8x7b-32768': 'Mixtral 8x7B',
+    'gemma-7b-it': 'Gemma 7B IT'
+};
+
+// Default Groq model
+const DEFAULT_GROQ_MODEL = 'llama-3.1-70b-versatile';
 
 // ====== DOM ELEMENTS ======
 const resumeInput = document.getElementById('resume-upload');
@@ -11,6 +24,10 @@ const jdInput = document.getElementById('jd-input');
 const tailorBtn = document.getElementById('tailor-btn');
 const previewBox = document.getElementById('resume-preview');
 const downloadBtn = document.getElementById('download-btn');
+
+// Model Selection DOM Elements
+const modelGemini = document.getElementById('model-gemini');
+const modelGroq = document.getElementById('model-groq');
 
 // Cover Letter DOM Elements
 const generateCoverLetterCheckbox = document.getElementById('generate-cover-letter');
@@ -135,15 +152,85 @@ function getApiToken() {
     return window.GEMINI_API_KEY || '';
 }
 
-// ====== RESUME STYLE EXTRACTION ======
+function getGroqApiToken() {
+    // Only use environment variable (set during deployment)
+    return window.GROQ_API_KEY || '';
+}
+
+function getSelectedModel() {
+    return modelGemini.checked ? 'gemini' : 'groq';
+}
+
+// ====== UNIFIED API CALLING FUNCTIONS ======
+async function callSelectedModelChat(resumeText, jdText) {
+    const selectedModel = getSelectedModel();
+    
+    if (selectedModel === 'gemini') {
+        const apiKey = getApiToken();
+        if (!apiKey) {
+            throw new Error('Gemini API key not configured. Please contact support.');
+        }
+        return await callGeminiChat(resumeText, jdText, apiKey);
+    } else {
+        const apiKey = getGroqApiToken();
+        if (!apiKey) {
+            throw new Error('Groq API key not configured. Please contact support.');
+        }
+        return await callGroqChat(resumeText, jdText, apiKey);
+    }
+}
+
+async function generateSelectedModelCoverLetter(resumeText, jdText, managerName, contactInfo) {
+    const selectedModel = getSelectedModel();
+    
+    if (selectedModel === 'gemini') {
+        const apiKey = getApiToken();
+        if (!apiKey) {
+            throw new Error('Gemini API key not configured. Please contact support.');
+        }
+        return await generateCoverLetter(resumeText, jdText, managerName, contactInfo, apiKey);
+    } else {
+        const apiKey = getGroqApiToken();
+        if (!apiKey) {
+            throw new Error('Groq API key not configured. Please contact support.');
+        }
+        return await generateGroqCoverLetter(resumeText, jdText, managerName, contactInfo, apiKey);
+    }
+}
+
+// ====== RESUME STYLE EXTRACTION FOR PDFKIT ======
 let originalResumeStyle = {
-    fontSize: 12,
-    fontFamily: 'Times',
-    lineHeight: 1.5,
+    fontSize: 11,
+    fontFamily: 'Helvetica', // PDFKit built-in font
+    lineHeight: 1.4,
     margins: { top: 40, bottom: 40, left: 40, right: 40 },
     textColor: '#000000',
     backgroundColor: '#ffffff'
 };
+
+// Font mapping for PDFKit (using built-in fonts)
+const fontMapping = {
+    'times': 'Times-Roman',
+    'times new roman': 'Times-Roman',
+    'arial': 'Helvetica',
+    'helvetica': 'Helvetica',
+    'courier': 'Courier',
+    'default': 'Helvetica'
+};
+
+function mapFontToPDFKit(fontFamily) {
+    if (!fontFamily) return 'Helvetica';
+    
+    const normalizedFont = fontFamily.toLowerCase().replace(/["']/g, '').trim();
+    
+    for (const [key, value] of Object.entries(fontMapping)) {
+        if (normalizedFont.includes(key)) {
+            return value;
+        }
+    }
+    
+    return 'Helvetica'; // Default fallback
+}
 
 async function extractResumeStyle(file) {
     const ext = file.name.split('.').pop().toLowerCase();
@@ -162,7 +249,7 @@ async function extractResumeStyle(file) {
                         // Extract basic style information
                         const style = {
                             fontSize: 11, // Default for PDF extraction
-                            fontFamily: 'Times',
+                            fontFamily: mapFontToPDFKit('Times'),
                             lineHeight: 1.4,
                             margins: { 
                                 top: Math.max(40, viewport.height * 0.08), 
@@ -214,7 +301,7 @@ async function extractResumeStyle(file) {
                                 style.fontSize = parseInt(computedStyle.fontSize) || 11;
                             }
                             if (computedStyle.fontFamily) {
-                                style.fontFamily = computedStyle.fontFamily.replace(/["']/g, '') || 'Times';
+                                style.fontFamily = mapFontToPDFKit(computedStyle.fontFamily) || 'Helvetica';
                             }
                         }
                         
@@ -278,6 +365,112 @@ async function extractTextFromDOCX(file) {
     });
 }
 
+// ====== GROQ API INTEGRATION ======
+async function callGroqChat(resumeText, jdText, apiKey) {
+    const prompt = `Tailor this resume for the job.
+
+RESUME: ${resumeText}
+JOB: ${jdText}
+
+OUTPUT RESUME ONLY. NO THINKING.`;
+
+    const requestBody = {
+        model: DEFAULT_GROQ_MODEL,
+        messages: [
+            {
+                role: "user",
+                content: prompt
+            }
+        ],
+        temperature: 0.2,
+        max_tokens: 2048,
+        top_p: 0.7,
+        stream: false
+    };
+
+    const response = await fetch(GROQ_API_ENDPOINT, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+        let errorMsg = "Groq API error: " + response.status;
+        try {
+            const errorData = await response.json();
+            if (errorData && errorData.error) {
+                errorMsg += " - " + errorData.error.message;
+            }
+        } catch (e) { }
+        throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
+        return data.choices[0].message.content;
+    } else {
+        throw new Error("Unexpected response format from Groq API.");
+    }
+}
+
+async function generateGroqCoverLetter(resumeText, jdText, managerName, contactInfo, apiKey) {
+    const prompt = `Write a professional cover letter.
+
+FORMAT: Business letter format
+ADDRESS TO: ${managerName}
+SIGNATURE: ${contactInfo}
+
+RESUME: ${resumeText}
+JOB: ${jdText}
+
+OUTPUT THE LETTER ONLY. NO THINKING. NO EXPLANATIONS.`;
+
+    const requestBody = {
+        model: DEFAULT_GROQ_MODEL,
+        messages: [
+            {
+                role: "user",
+                content: prompt
+            }
+        ],
+        temperature: 0.2,
+        max_tokens: 2048,
+        top_p: 0.7,
+        stream: false
+    };
+
+    const response = await fetch(GROQ_API_ENDPOINT, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+        let errorMsg = "Groq API error: " + response.status;
+        try {
+            const errorData = await response.json();
+            if (errorData && errorData.error) {
+                errorMsg += " - " + errorData.error.message;
+            }
+        } catch (e) { }
+        throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
+        return data.choices[0].message.content;
+    } else {
+        throw new Error("Unexpected response format from Groq API.");
+    }
+}
+
+// ====== FILE PARSING ======
 async function extractResumeText(file) {
     if (!file) throw 'No file selected.';
     const ext = file.name.split('.').pop().toLowerCase();
@@ -290,7 +483,7 @@ async function extractResumeText(file) {
     }
 }
 
-// ====== PDF GENERATION ======
+// ====== PDF GENERATION WITH PDFKIT ======
 async function generateStyledPDF(content, filename, isResume = true) {
     try {
         // Show downloading state
@@ -305,69 +498,134 @@ async function generateStyledPDF(content, filename, isResume = true) {
         `;
         btn.disabled = true;
 
-        // Use html2pdf for better formatting preservation
-        const options = {
-            margin: [
-                originalResumeStyle.margins.top / 72, // Convert px to inches
-                originalResumeStyle.margins.right / 72,
-                originalResumeStyle.margins.bottom / 72,
-                originalResumeStyle.margins.left / 72
-            ],
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-                scale: 2, 
-                useCORS: true,
-                letterRendering: true,
-                logging: false
-            },
-            jsPDF: { 
-                unit: 'in', 
-                format: 'letter', 
-                orientation: 'portrait',
-                compress: true
-            },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
+        // Create PDF document with PDFKit
+        const doc = new window.PDFDocument({
+            size: 'LETTER',
+            margins: {
+                top: originalResumeStyle.margins.top || 40,
+                bottom: originalResumeStyle.margins.bottom || 40,
+                left: originalResumeStyle.margins.left || 40,
+                right: originalResumeStyle.margins.right || 40
+            }
+        });
 
-        // Create a temporary container with proper styling
-        const tempContainer = document.createElement('div');
-        tempContainer.style.cssText = `
-            font-family: ${originalResumeStyle.fontFamily}, 'Times New Roman', serif;
-            font-size: ${originalResumeStyle.fontSize}pt;
-            line-height: ${originalResumeStyle.lineHeight};
-            color: ${originalResumeStyle.textColor};
-            background-color: ${originalResumeStyle.backgroundColor};
-            width: 8.5in;
-            min-height: 11in;
-            padding: 0.5in;
-            margin: 0;
-            box-sizing: border-box;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        `;
-        
-        // Format content for better PDF layout
-        const formattedContent = content.trim();
+        // Collect PDF data
+        const chunks = [];
+        doc.on('data', function(chunk) {
+            chunks.push(chunk);
+        });
+
+        doc.on('end', function() {
+            try {
+                const blob = new Blob(chunks, { type: 'application/pdf' });
+                
+                // Download using FileSaver.js if available, otherwise fallback
+                if (window.saveAs) {
+                    window.saveAs(blob, filename);
+                } else {
+                    // Fallback download method
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+                
+                // Reset button state
+                setTimeout(() => {
+                    btn.classList.remove('downloading');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error creating PDF blob:', error);
+                throw error;
+            }
+        });
+
+        // Set up document styling based on extracted resume style
+        const fontSize = originalResumeStyle.fontSize || 11;
+        const fontFamily = mapFontToPDFKit(originalResumeStyle.fontFamily) || 'Helvetica';
+        const lineHeight = originalResumeStyle.lineHeight || 1.4;
+        const textColor = originalResumeStyle.textColor || '#000000';
+
+        // Process content for PDF
+        const lines = content.split('\n');
+        let yPosition = doc.page.margins.top;
+        const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+        const pageHeight = doc.page.height - doc.page.margins.top - doc.page.margins.bottom;
+
+        doc.font(fontFamily)
+           .fontSize(fontSize)
+           .fillColor(textColor);
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
             
-        tempContainer.textContent = formattedContent;
-        
-        // Add to DOM temporarily
-        document.body.appendChild(tempContainer);
-        
-        // Generate PDF
-        await html2pdf().set(options).from(tempContainer).save();
-        
-        // Clean up
-        document.body.removeChild(tempContainer);
-        
-        // Reset button state
-        setTimeout(() => {
-            btn.classList.remove('downloading');
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }, 1000);
+            // Skip empty lines but add some spacing
+            if (!line) {
+                yPosition += fontSize * 0.5;
+                continue;
+            }
+
+            // Check if we need a new page
+            if (yPosition + (fontSize * lineHeight) > pageHeight) {
+                doc.addPage();
+                yPosition = doc.page.margins.top;
+            }
+
+            // Detect headers (lines that are likely section headers)
+            const isHeader = line.length < 50 && 
+                            (line.toUpperCase() === line || 
+                             line.includes(':') || 
+                             /^[A-Z][A-Za-z\s]+$/.test(line));
+
+            if (isHeader && line.length > 2) {
+                // Style headers differently
+                doc.fontSize(fontSize + 2)
+                   .font('Helvetica-Bold')
+                   .fillColor('#2c3e50');
+                
+                yPosition += fontSize * 0.5; // Add space before header
+                doc.text(line, doc.page.margins.left, yPosition, {
+                    width: pageWidth,
+                    align: 'left'
+                });
+                yPosition += (fontSize + 2) * lineHeight + 5;
+                
+                // Reset to normal text style
+                doc.fontSize(fontSize)
+                   .font(fontFamily)
+                   .fillColor(textColor);
+            } else {
+                // Regular text with word wrapping
+                const textHeight = doc.heightOfString(line, {
+                    width: pageWidth,
+                    lineGap: fontSize * (lineHeight - 1)
+                });
+                
+                // Check if text fits on current page
+                if (yPosition + textHeight > pageHeight) {
+                    doc.addPage();
+                    yPosition = doc.page.margins.top;
+                }
+                
+                doc.text(line, doc.page.margins.left, yPosition, {
+                    width: pageWidth,
+                    align: 'left',
+                    lineGap: fontSize * (lineHeight - 1)
+                });
+                
+                yPosition += textHeight + 3;
+            }
+        }
+
+        // Finalize the PDF
+        doc.end();
         
     } catch (error) {
         console.error('PDF generation failed:', error);
@@ -378,8 +636,8 @@ async function generateStyledPDF(content, filename, isResume = true) {
         btn.innerHTML = btn.dataset.originalText || 'Download PDF';
         btn.disabled = false;
         
-        // Show error message
-        alert('Failed to generate PDF. Please try again.');
+        // Show user-friendly error message
+        alert('Failed to generate PDF. Please try again or contact support if the issue persists.');
     }
 }
 
@@ -397,6 +655,8 @@ downloadCoverLetterBtn.addEventListener('click', async () => {
         await generateStyledPDF(coverLetterText, 'cover-letter.pdf', false);
     }
 });
+
+// ====== GEMINI API INTEGRATION ======
 async function callGeminiChat(resumeText, jdText, apiKey) {
     const prompt = `Tailor this resume for the job.
 
@@ -504,10 +764,10 @@ tailorBtn.addEventListener('click', async () => {
     // downloadBtn.style.display = 'none'; // Download button removed
     const file = resumeInput.files[0];
     const jdText = jdInput.value.trim();
-    const apiToken = getApiToken();
     const shouldGenerateCoverLetter = generateCoverLetterCheckbox.checked;
     const managerName = hiringManagerInput.value.trim() || 'Hiring Manager';
     const contactInfo = contactInfoInput.value.trim();
+    const selectedModel = getSelectedModel();
 
     if (!file) {
         showMessage('Please upload your resume file.', true);
@@ -517,10 +777,15 @@ tailorBtn.addEventListener('click', async () => {
         showMessage('Please paste the job description.', true);
         return;
     }
-    if (!apiToken) {
-        showMessage('Application configuration error: Gemini API key not found. Please contact support.', true);
+    
+    // Check API key based on selected model
+    const apiKey = selectedModel === 'gemini' ? getApiToken() : getGroqApiToken();
+    if (!apiKey) {
+        const modelName = selectedModel === 'gemini' ? 'Gemini' : 'Groq';
+        showMessage(`${modelName} API key not configured. Please contact support.`, true);
         return;
     }
+    
     if (shouldGenerateCoverLetter && !contactInfo) {
         showMessage('Please enter your contact information for the cover letter signature.', true);
         return;
@@ -539,7 +804,7 @@ tailorBtn.addEventListener('click', async () => {
 
     showSpinner();
     try {
-        const tailoredResume = await callGeminiChat(resumeText, jdText, apiToken);
+        const tailoredResume = await callSelectedModelChat(resumeText, jdText);
         previewBox.innerHTML = '';
         typewriterEffect(tailoredResume, previewBox, 14);
 
@@ -547,7 +812,7 @@ tailorBtn.addEventListener('click', async () => {
         if (shouldGenerateCoverLetter) {
             showSpinner();
             try {
-                const coverLetter = await generateCoverLetter(resumeText, jdText, managerName, contactInfo, apiToken);
+                const coverLetter = await generateSelectedModelCoverLetter(resumeText, jdText, managerName, contactInfo);
                 coverLetterPreview.innerHTML = '';
                 typewriterEffect(coverLetter, coverLetterPreview, 14);
             } catch (err) {

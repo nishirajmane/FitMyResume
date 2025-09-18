@@ -56,6 +56,96 @@ body {
     color: #e0e0e0;
 }
 
+.section-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #00bfa6;
+    font-family: 'Playfair Display', serif;
+}
+
+/* Model Selection Styles */
+.model-selection-section {
+    margin-bottom: 1.5rem;
+}
+
+.model-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem;
+    background: #232526;
+    border: 2px solid #333;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.radio-label:hover {
+    border-color: #00bfa6;
+    background: #2a2d2e;
+}
+
+.radio-label input[type="radio"] {
+    display: none;
+}
+
+.radio-custom {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #555;
+    border-radius: 50%;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.radio-label input[type="radio"]:checked + .radio-custom {
+    border-color: #00bfa6;
+    background: #00bfa6;
+}
+
+.radio-label input[type="radio"]:checked + .radio-custom::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+}
+
+.radio-label input[type="radio"]:checked ~ .model-info .model-name {
+    color: #00bfa6;
+}
+
+.model-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.model-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    transition: color 0.2s ease;
+}
+
+.model-desc {
+    font-size: 0.85rem;
+    color: #999;
+    font-style: italic;
+}
+
 input[type="file"],
 input[type="password"],
 input[type="email"],

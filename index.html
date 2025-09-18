@@ -15,14 +15,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- mammoth.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.0.0/mammoth.browser.min.js"></script>
-    <!-- html2pdf.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- jsPDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- PDFKit -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfkit@0.17.2/js/pdfkit.standalone.js"></script>
+    <!-- FileSaver.js for browser downloads -->
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
     <!-- Environment configuration -->
     <script>
         // Environment configuration - can be replaced during deployment
         window.GEMINI_API_KEY = window.GEMINI_API_KEY || '';
+        window.GROQ_API_KEY = window.GROQ_API_KEY || '';
     </script>
 </head>
 
@@ -42,6 +43,27 @@
             <section class="jd-section">
                 <label for="jd-input" class="section-label">Paste Job Description:</label>
                 <textarea id="jd-input" rows="7" placeholder="Paste the job description here..."></textarea>
+            </section>
+            <section class="model-selection-section">
+                <h3 class="section-title">AI Model Selection</h3>
+                <div class="model-toggle">
+                    <label class="radio-label">
+                        <input type="radio" name="model" value="gemini" id="model-gemini" checked>
+                        <span class="radio-custom"></span>
+                        <div class="model-info">
+                            <span class="model-name">Google Gemini</span>
+                            <span class="model-desc">Advanced reasoning and analysis</span>
+                        </div>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="model" value="groq" id="model-groq">
+                        <span class="radio-custom"></span>
+                        <div class="model-info">
+                            <span class="model-name">Groq (Fast AI)</span>
+                            <span class="model-desc">Ultra-fast processing</span>
+                        </div>
+                    </label>
+                </div>
             </section>
 
             <section class="cover-letter-section">

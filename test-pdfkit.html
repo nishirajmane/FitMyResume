@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDFKit Test</title>
+</head>
+<body>
+    <h1>PDFKit Integration Test</h1>
+    <button id="test-pdf">Generate Test PDF</button>
+    
+    <!-- PDFKit -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfkit@0.17.2/js/pdfkit.standalone.js"></script>
+    <!-- FileSaver.js for browser downloads -->
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    
+    <script>
+        document.getElementById('test-pdf').addEventListener('click', function() {
+            try {
+                console.log('Creating PDF...');
+                
+                // Create PDF document
+                const doc = new window.PDFDocument({
+                    size: 'LETTER',
+                    margins: { top: 40, bottom: 40, left: 40, right: 40 }
+                });
+                
+                // Collect PDF data
+                const chunks = [];
+                doc.on('data', function(chunk) {
+                    chunks.push(chunk);
+                });
+                
+                doc.on('end', function() {
+                    console.log('PDF data collected, creating blob...');
+                    const blob = new Blob(chunks, { type: 'application/pdf' });
+                    
+                    // Download using FileSaver.js
+                    if (window.saveAs) {
+                        window.saveAs(blob, 'pdfkit-test.pdf');
+                        console.log('PDF downloaded successfully');
+                    } else {
+                        // Fallback download method
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'pdfkit-test.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        console.log('PDF downloaded using fallback method');
+                    }
+                });
+                
+                // Add content
+                doc.font('Helvetica')
+                   .fontSize(12)
+                   .text('This is a test PDF generated with PDFKit!', 100, 100);
+                
+                doc.fontSize(10)
+                   .text('If you can see this, the PDFKit integration is working correctly.', 100, 150);
+                
+                // Finalize
+                doc.end();
+                
+            } catch (error) {
+                console.error('PDF generation failed:', error);
+                alert('PDF generation failed: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
