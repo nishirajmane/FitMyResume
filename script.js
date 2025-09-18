@@ -7,16 +7,16 @@ let GROQ_API_KEY = '';
 const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
 const GROQ_API_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
-// Groq models configuration (free models)
+// Groq models configuration (current supported models as of 2025)
 const GROQ_MODELS = {
-    'llama-3.1-70b-versatile': 'Llama 3.1 70B (Versatile)',
+    'llama-3.3-70b-versatile': 'Llama 3.3 70B (Versatile)',
     'llama-3.1-8b-instant': 'Llama 3.1 8B (Fast)',
-    'mixtral-8x7b-32768': 'Mixtral 8x7B',
-    'gemma-7b-it': 'Gemma 7B IT'
+    'qwen/qwen3-32b': 'Qwen 3 32B',
+    'meta-llama/llama-guard-4-12b': 'Llama Guard 4 12B'
 };
 
 // Default Groq model
-const DEFAULT_GROQ_MODEL = 'llama-3.1-70b-versatile';
+const DEFAULT_GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 // ====== DOM ELEMENTS ======
 const resumeInput = document.getElementById('resume-upload');
@@ -26,8 +26,7 @@ const previewBox = document.getElementById('resume-preview');
 const downloadBtn = document.getElementById('download-btn');
 
 // Model Selection DOM Elements
-const modelGemini = document.getElementById('model-gemini');
-const modelGroq = document.getElementById('model-groq');
+const modelSelect = document.getElementById('model-select');
 
 // Cover Letter DOM Elements
 const generateCoverLetterCheckbox = document.getElementById('generate-cover-letter');
@@ -158,7 +157,7 @@ function getGroqApiToken() {
 }
 
 function getSelectedModel() {
-    return modelGemini.checked ? 'gemini' : 'groq';
+    return modelSelect.value;
 }
 
 // ====== UNIFIED API CALLING FUNCTIONS ======

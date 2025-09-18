@@ -45,24 +45,19 @@
                 <textarea id="jd-input" rows="7" placeholder="Paste the job description here..."></textarea>
             </section>
             <section class="model-selection-section">
-                <h3 class="section-title">AI Model Selection</h3>
-                <div class="model-toggle">
-                    <label class="radio-label">
-                        <input type="radio" name="model" value="gemini" id="model-gemini" checked>
-                        <span class="radio-custom"></span>
-                        <div class="model-info">
-                            <span class="model-name">Google Gemini</span>
-                            <span class="model-desc">Advanced reasoning and analysis</span>
+                <div class="model-selector-container">
+                    <label for="model-select" class="model-selector-label">AI Model:</label>
+                    <div class="model-dropdown">
+                        <select id="model-select" class="model-select">
+                            <option value="gemini" selected>Google Gemini - Advanced reasoning</option>
+                            <option value="groq">Groq - Ultra-fast processing</option>
+                        </select>
+                        <div class="dropdown-arrow">
+                            <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                                <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                         </div>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="model" value="groq" id="model-groq">
-                        <span class="radio-custom"></span>
-                        <div class="model-info">
-                            <span class="model-name">Groq (Fast AI)</span>
-                            <span class="model-desc">Ultra-fast processing</span>
-                        </div>
-                    </label>
+                    </div>
                 </div>
             </section>
 
