@@ -136,6 +136,12 @@ button:hover,
     color: #00bfa6;
 }
 
+.button-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
 .copy-btn {
     display: flex;
     align-items: center;
@@ -152,21 +158,47 @@ button:hover,
     transition: all 0.2s ease;
 }
 
+.download-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #ff6b35;
+    color: #fff;
+    border: 1px solid #ff6b35;
+    border-radius: 6px;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
 .copy-btn:hover {
     background: #00bfa6;
     color: #fff;
     border-color: #00bfa6;
 }
 
-.copy-btn:active {
+.download-btn:hover {
+    background: #e55a2b;
+    border-color: #e55a2b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+}
+
+.copy-btn:active,
+.download-btn:active {
     transform: scale(0.95);
 }
 
-.copy-btn svg {
+.copy-btn svg,
+.download-btn svg {
     transition: transform 0.2s ease;
 }
 
-.copy-btn:hover svg {
+.copy-btn:hover svg,
+.download-btn:hover svg {
     transform: scale(1.1);
 }
 
@@ -174,6 +206,13 @@ button:hover,
     background: #4caf50;
     color: #fff;
     border-color: #4caf50;
+}
+
+.download-btn.downloading {
+    background: #9e9e9e;
+    color: #fff;
+    border-color: #9e9e9e;
+    cursor: not-allowed;
 }
 
 .copy-btn.copied::after {

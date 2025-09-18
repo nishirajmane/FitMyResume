@@ -17,6 +17,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.0.0/mammoth.browser.min.js"></script>
     <!-- html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Environment configuration -->
+    <script>
+        // Environment configuration - can be replaced during deployment
+        window.GEMINI_API_KEY = window.GEMINI_API_KEY || '';
+    </script>
 </head>
 
 <body>
@@ -36,12 +43,7 @@
                 <label for="jd-input" class="section-label">Paste Job Description:</label>
                 <textarea id="jd-input" rows="7" placeholder="Paste the job description here..."></textarea>
             </section>
-            <section class="api-section">
-                <label for="api-key" class="section-label">Hugging Face API Token:
-                    <button id="how-to-api-btn" type="button" class="how-to-btn">How to get API key?</button>
-                </label>
-                <input type="password" id="api-key" placeholder="Enter your Hugging Face API token here">
-            </section>
+
             <section class="cover-letter-section">
                 <h3 class="section-title">Cover Letter Generator</h3>
                 <div class="cover-letter-toggle">
@@ -67,49 +69,55 @@
             <section class="preview-section">
                 <div class="preview-header">
                     <h2>Tailored Resume Preview</h2>
-                    <button id="copy-resume-btn" class="copy-btn" title="Copy Resume">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                        Copy
-                    </button>
+                    <div class="button-group">
+                        <button id="copy-resume-btn" class="copy-btn" title="Copy Resume">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy
+                        </button>
+                        <button id="download-resume-btn" class="download-btn" title="Download Resume as PDF">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download PDF
+                        </button>
+                    </div>
                 </div>
                 <div id="resume-preview" class="resume-preview"></div>
             </section>
             <section id="cover-letter-preview-section" class="preview-section" style="display: none;">
                 <div class="preview-header">
                     <h2>Cover Letter Preview</h2>
-                    <button id="copy-cover-letter-btn" class="copy-btn" title="Copy Cover Letter">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                        Copy
-                    </button>
+                    <div class="button-group">
+                        <button id="copy-cover-letter-btn" class="copy-btn" title="Copy Cover Letter">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy
+                        </button>
+                        <button id="download-cover-letter-btn" class="download-btn" title="Download Cover Letter as PDF">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download PDF
+                        </button>
+                    </div>
                 </div>
                 <div id="cover-letter-preview" class="resume-preview"></div>
             </section>
         </div>
-        <!-- Modal for API Key Guidance -->
-        <div id="api-modal" class="modal" style="display:none;">
-            <div class="modal-content">
-                <span class="close-modal" id="close-modal">&times;</span>
-                <h3>How to get your Hugging Face API Key</h3>
-                <ol>
-                    <li>Go to <a href="https://huggingface.co/settings/tokens" target="_blank"
-                            rel="noopener">huggingface.co/settings/tokens</a></li>
-                    <li>Click <b>New token</b> (top right)</li>
-                    <li>Give your token a name (e.g., "FitMyResume")</li>
-                    <li>Check <b>Make calls to Inference Providers</b> under Inference</li>
-                    <li>Click <b>Create</b> and copy your token</li>
-                    <li>Paste it in the field above</li>
-                </ol>
-                <p style="margin-top:1em; color:#00bfa6;">Never share your API key publicly.</p>
-            </div>
-        </div>
+
     </main>
     <footer class="site-footer">
         <div class="footer-content">

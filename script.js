@@ -1,8 +1,9 @@
 // script.js - Resume Tailor App Logic
 
 // ====== CONFIGURATION ======
-// No hardcoded API key. User must enter their Hugging Face API token in the input field.
-let HF_API_TOKEN = '';
+// Gemini API configuration - will use environment variable for deployment
+let GEMINI_API_KEY = '';
+const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
 
 // ====== DOM ELEMENTS ======
 const resumeInput = document.getElementById('resume-upload');
@@ -10,7 +11,6 @@ const jdInput = document.getElementById('jd-input');
 const tailorBtn = document.getElementById('tailor-btn');
 const previewBox = document.getElementById('resume-preview');
 const downloadBtn = document.getElementById('download-btn');
-const apiKeyInput = document.getElementById('api-key');
 
 // Cover Letter DOM Elements
 const generateCoverLetterCheckbox = document.getElementById('generate-cover-letter');
@@ -24,23 +24,11 @@ const coverLetterPreview = document.getElementById('cover-letter-preview');
 const copyResumeBtn = document.getElementById('copy-resume-btn');
 const copyCoverLetterBtn = document.getElementById('copy-cover-letter-btn');
 
-// ====== MODAL LOGIC FOR API KEY HELP ======
-const howToApiBtn = document.getElementById('how-to-api-btn');
-const apiModal = document.getElementById('api-modal');
-const closeModalBtn = document.getElementById('close-modal');
+// Download Button DOM Elements
+const downloadResumeBtn = document.getElementById('download-resume-btn');
+const downloadCoverLetterBtn = document.getElementById('download-cover-letter-btn');
 
-howToApiBtn.addEventListener('click', () => {
-    apiModal.style.display = 'flex';
-});
-closeModalBtn.addEventListener('click', () => {
-    apiModal.style.display = 'none';
-});
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') apiModal.style.display = 'none';
-});
-apiModal.addEventListener('click', (e) => {
-    if (e.target === apiModal) apiModal.style.display = 'none';
-});
+
 
 // ====== COVER LETTER TOGGLE LOGIC ======
 generateCoverLetterCheckbox.addEventListener('change', () => {
@@ -143,11 +131,108 @@ function typewriterEffect(text, element, speed = 18) {
 }
 
 function getApiToken() {
-    // Always use the value from the input field
-    return apiKeyInput.value.trim();
+    // Only use environment variable (set during deployment)
+    return window.GEMINI_API_KEY || '';
 }
 
-// ====== FILE PARSING ======
+// ====== RESUME STYLE EXTRACTION ======
+let originalResumeStyle = {
+    fontSize: 12,
+    fontFamily: 'Times',
+    lineHeight: 1.5,
+    margins: { top: 40, bottom: 40, left: 40, right: 40 },
+    textColor: '#000000',
+    backgroundColor: '#ffffff'
+};
+
+async function extractResumeStyle(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    
+    if (ext === 'pdf') {
+        try {
+            const reader = new FileReader();
+            return new Promise((resolve) => {
+                reader.onload = async function () {
+                    try {
+                        const typedarray = new Uint8Array(reader.result);
+                        const pdf = await window.pdfjsLib.getDocument({ data: typedarray }).promise;
+                        const page = await pdf.getPage(1);
+                        const viewport = page.getViewport({ scale: 1.0 });
+                        
+                        // Extract basic style information
+                        const style = {
+                            fontSize: 11, // Default for PDF extraction
+                            fontFamily: 'Times',
+                            lineHeight: 1.4,
+                            margins: { 
+                                top: Math.max(40, viewport.height * 0.08), 
+                                bottom: Math.max(40, viewport.height * 0.08), 
+                                left: Math.max(40, viewport.width * 0.08), 
+                                right: Math.max(40, viewport.width * 0.08) 
+                            },
+                            textColor: '#000000',
+                            backgroundColor: '#ffffff',
+                            pageWidth: viewport.width,
+                            pageHeight: viewport.height
+                        };
+                        
+                        originalResumeStyle = style;
+                        resolve(style);
+                    } catch (err) {
+                        resolve(originalResumeStyle); // Fallback to default
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        } catch (err) {
+            return originalResumeStyle;
+        }
+    } else if (ext === 'docx') {
+        try {
+            const reader = new FileReader();
+            return new Promise((resolve) => {
+                reader.onload = async function (event) {
+                    try {
+                        const result = await window.mammoth.convertToHtml({ arrayBuffer: event.target.result });
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = result.value;
+                        
+                        // Try to extract basic styling from DOCX HTML
+                        const firstParagraph = tempDiv.querySelector('p');
+                        const style = {
+                            fontSize: 11,
+                            fontFamily: 'Times',
+                            lineHeight: 1.4,
+                            margins: { top: 40, bottom: 40, left: 40, right: 40 },
+                            textColor: '#000000',
+                            backgroundColor: '#ffffff'
+                        };
+                        
+                        if (firstParagraph) {
+                            const computedStyle = window.getComputedStyle(firstParagraph);
+                            if (computedStyle.fontSize) {
+                                style.fontSize = parseInt(computedStyle.fontSize) || 11;
+                            }
+                            if (computedStyle.fontFamily) {
+                                style.fontFamily = computedStyle.fontFamily.replace(/["']/g, '') || 'Times';
+                            }
+                        }
+                        
+                        originalResumeStyle = style;
+                        resolve(style);
+                    } catch (err) {
+                        resolve(originalResumeStyle);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        } catch (err) {
+            return originalResumeStyle;
+        }
+    }
+    
+    return originalResumeStyle;
+}
 async function extractTextFromPDF(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -205,9 +290,114 @@ async function extractResumeText(file) {
     }
 }
 
-// ====== HUGGING FACE API INTEGRATION ======
-async function callDeepSeekChat(resumeText, jdText, apiToken) {
-    const endpoint = "https://router.huggingface.co/hyperbolic/v1/chat/completions";
+// ====== PDF GENERATION ======
+async function generateStyledPDF(content, filename, isResume = true) {
+    try {
+        // Show downloading state
+        const btn = isResume ? downloadResumeBtn : downloadCoverLetterBtn;
+        const originalText = btn.innerHTML;
+        btn.classList.add('downloading');
+        btn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Generating...
+        `;
+        btn.disabled = true;
+
+        // Use html2pdf for better formatting preservation
+        const options = {
+            margin: [
+                originalResumeStyle.margins.top / 72, // Convert px to inches
+                originalResumeStyle.margins.right / 72,
+                originalResumeStyle.margins.bottom / 72,
+                originalResumeStyle.margins.left / 72
+            ],
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true,
+                letterRendering: true,
+                logging: false
+            },
+            jsPDF: { 
+                unit: 'in', 
+                format: 'letter', 
+                orientation: 'portrait',
+                compress: true
+            },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+
+        // Create a temporary container with proper styling
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = `
+            font-family: ${originalResumeStyle.fontFamily}, 'Times New Roman', serif;
+            font-size: ${originalResumeStyle.fontSize}pt;
+            line-height: ${originalResumeStyle.lineHeight};
+            color: ${originalResumeStyle.textColor};
+            background-color: ${originalResumeStyle.backgroundColor};
+            width: 8.5in;
+            min-height: 11in;
+            padding: 0.5in;
+            margin: 0;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        `;
+        
+        // Format content for better PDF layout
+        const formattedContent = content.trim();
+            
+        tempContainer.textContent = formattedContent;
+        
+        // Add to DOM temporarily
+        document.body.appendChild(tempContainer);
+        
+        // Generate PDF
+        await html2pdf().set(options).from(tempContainer).save();
+        
+        // Clean up
+        document.body.removeChild(tempContainer);
+        
+        // Reset button state
+        setTimeout(() => {
+            btn.classList.remove('downloading');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 1000);
+        
+    } catch (error) {
+        console.error('PDF generation failed:', error);
+        
+        // Reset button on error
+        const btn = isResume ? downloadResumeBtn : downloadCoverLetterBtn;
+        btn.classList.remove('downloading');
+        btn.innerHTML = btn.dataset.originalText || 'Download PDF';
+        btn.disabled = false;
+        
+        // Show error message
+        alert('Failed to generate PDF. Please try again.');
+    }
+}
+
+// Download button event listeners
+downloadResumeBtn.addEventListener('click', async () => {
+    const resumeText = previewBox.textContent || previewBox.innerText;
+    if (resumeText && resumeText.trim() && !resumeText.includes('Please upload') && !resumeText.includes('Please paste')) {
+        await generateStyledPDF(resumeText, 'tailored-resume.pdf', true);
+    }
+});
+
+downloadCoverLetterBtn.addEventListener('click', async () => {
+    const coverLetterText = coverLetterPreview.textContent || coverLetterPreview.innerText;
+    if (coverLetterText && coverLetterText.trim() && !coverLetterText.includes('Cover letter generation failed')) {
+        await generateStyledPDF(coverLetterText, 'cover-letter.pdf', false);
+    }
+});
+async function callGeminiChat(resumeText, jdText, apiKey) {
     const prompt = `Tailor this resume for the job.
 
 RESUME: ${resumeText}
@@ -215,47 +405,47 @@ JOB: ${jdText}
 
 OUTPUT RESUME ONLY. NO THINKING.`;
 
-    const response = await fetch(endpoint, {
+    const requestBody = {
+        contents: [{
+            parts: [{
+                text: prompt
+            }]
+        }],
+        generationConfig: {
+            temperature: 0.2,
+            topP: 0.7,
+            maxOutputTokens: 2048
+        }
+    };
+
+    const response = await fetch(`${GEMINI_API_ENDPOINT}?key=${apiKey}`, {
         method: "POST",
         headers: {
-            "Authorization": `Bearer ${apiToken}`,
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            model: "deepseek-ai/DeepSeek-R1-0528",
-            messages: [
-                {
-                    role: "user",
-                    content: prompt
-                }
-            ],
-            temperature: 0.2,
-            top_p: 0.7,
-            stream: false
-        })
+        body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
-        let errorMsg = "Hyperbolic API error: " + response.status;
+        let errorMsg = "Gemini API error: " + response.status;
         try {
             const errorData = await response.json();
             if (errorData && errorData.error) {
-                errorMsg += " - " + errorData.error;
+                errorMsg += " - " + errorData.error.message;
             }
         } catch (e) { }
         throw new Error(errorMsg);
     }
 
     const data = await response.json();
-    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-        return data.choices[0].message.content;
+    if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
+        return data.candidates[0].content.parts[0].text;
     } else {
-        throw new Error("Unexpected response format from Hyperbolic API.");
+        throw new Error("Unexpected response format from Gemini API.");
     }
 }
 
-async function generateCoverLetter(resumeText, jdText, managerName, contactInfo, apiToken) {
-    const endpoint = "https://router.huggingface.co/hyperbolic/v1/chat/completions";
+async function generateCoverLetter(resumeText, jdText, managerName, contactInfo, apiKey) {
     const prompt = `Write a professional cover letter.
 
 FORMAT: Business letter format
@@ -267,42 +457,43 @@ JOB: ${jdText}
 
 OUTPUT THE LETTER ONLY. NO THINKING. NO EXPLANATIONS.`;
 
-    const response = await fetch(endpoint, {
+    const requestBody = {
+        contents: [{
+            parts: [{
+                text: prompt
+            }]
+        }],
+        generationConfig: {
+            temperature: 0.2,
+            topP: 0.7,
+            maxOutputTokens: 2048
+        }
+    };
+
+    const response = await fetch(`${GEMINI_API_ENDPOINT}?key=${apiKey}`, {
         method: "POST",
         headers: {
-            "Authorization": `Bearer ${apiToken}`,
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            model: "deepseek-ai/DeepSeek-R1-0528",
-            messages: [
-                {
-                    role: "user",
-                    content: prompt
-                }
-            ],
-            temperature: 0.2,
-            top_p: 0.7,
-            stream: false
-        })
+        body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
-        let errorMsg = "Hyperbolic API error: " + response.status;
+        let errorMsg = "Gemini API error: " + response.status;
         try {
             const errorData = await response.json();
             if (errorData && errorData.error) {
-                errorMsg += " - " + errorData.error;
+                errorMsg += " - " + errorData.error.message;
             }
         } catch (e) { }
         throw new Error(errorMsg);
     }
 
     const data = await response.json();
-    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-        return data.choices[0].message.content;
+    if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
+        return data.candidates[0].content.parts[0].text;
     } else {
-        throw new Error("Unexpected response format from Hyperbolic API.");
+        throw new Error("Unexpected response format from Gemini API.");
     }
 }
 
@@ -327,7 +518,7 @@ tailorBtn.addEventListener('click', async () => {
         return;
     }
     if (!apiToken) {
-        showMessage('Please enter your Hugging Face API token.', true);
+        showMessage('Application configuration error: Gemini API key not found. Please contact support.', true);
         return;
     }
     if (shouldGenerateCoverLetter && !contactInfo) {
@@ -338,7 +529,9 @@ tailorBtn.addEventListener('click', async () => {
     showSpinner();
     let resumeText = '';
     try {
+        // Extract resume text and style information
         resumeText = await extractResumeText(file);
+        await extractResumeStyle(file); // Extract styling for PDF generation
     } catch (err) {
         showMessage(err.toString(), true);
         return;
@@ -346,7 +539,7 @@ tailorBtn.addEventListener('click', async () => {
 
     showSpinner();
     try {
-        const tailoredResume = await callDeepSeekChat(resumeText, jdText, apiToken);
+        const tailoredResume = await callGeminiChat(resumeText, jdText, apiToken);
         previewBox.innerHTML = '';
         typewriterEffect(tailoredResume, previewBox, 14);
 
@@ -374,11 +567,6 @@ resumeInput.addEventListener('change', () => {
     // downloadBtn.style.display = 'none'; // Download button removed
 });
 jdInput.addEventListener('input', () => {
-    previewBox.innerHTML = '';
-    coverLetterPreview.innerHTML = '';
-    // downloadBtn.style.display = 'none'; // Download button removed
-});
-apiKeyInput.addEventListener('input', () => {
     previewBox.innerHTML = '';
     coverLetterPreview.innerHTML = '';
     // downloadBtn.style.display = 'none'; // Download button removed

@@ -1,5 +1,13 @@
 {
-  "dependencies": {
-    "@huggingface/inference": "^4.4.0"
+  "name": "fitmyresume",
+  "version": "1.0.0",
+  "description": "AI-powered resume tailoring application using Gemini API",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 3000"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "http-server": "^14.1.1"
   }
 }
